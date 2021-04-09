@@ -58,14 +58,14 @@ static std::map<std::string, std::string> normalized_names;
 
 static bool query_is_yes( const std::string &query );
 static void draw_hidden_amount( const catacurses::window &w, int amount, int num_recipe );
-static void draw_can_craft_indicator( const catacurses::window &w, const recipe &rec );
+static void draw_can_craft_indicator( const catacurses::window &w, const recipe &rec, Character &player_character=get_player_character() ); // NEW
 static void draw_recipe_tabs( const catacurses::window &w, const std::string &tab,
                               TAB_MODE mode = NORMAL );
 static void draw_recipe_subtabs( const catacurses::window &w, const std::string &tab,
                                  const std::string &subtab,
                                  const recipe_subset &available_recipes, TAB_MODE mode = NORMAL );
 
-static std::string peek_related_recipe( const recipe *current, const recipe_subset &available );
+static std::string peek_related_recipe( const recipe *current, const recipe_subset &available, Character &player_character=get_player_character()); // NEW
 static int related_menu_fill( uilist &rmenu,
                               const std::vector<std::pair<itype_id, std::string>> &related_recipes,
                               const recipe_subset &available );
@@ -135,8 +135,8 @@ void reset_recipe_categories()
 namespace
 {
 struct availability {
-    explicit availability( const recipe *r, int batch_size = 1 ) {
-        Character &player = get_player_character();
+    explicit availability( const recipe *r, int batch_size = 1, Character &player = get_player_character()) { // nEW
+        // NEW Character &player = get_player_character();
         const inventory &inv = player.crafting_inventory();
         auto all_items_filter = r->get_component_filter( recipe_filter_flags::none );
         auto no_rotten_filter = r->get_component_filter( recipe_filter_flags::no_rotten );
@@ -318,7 +318,7 @@ static std::vector<std::string> recipe_info(
     return result;
 }
 
-const recipe *select_crafting_recipe( int &batch_size_out )
+const recipe *select_crafting_recipe( int &batch_size_out, Character &player_character) // NEW
 {
     struct {
         const recipe *recp = nullptr;
@@ -495,8 +495,9 @@ const recipe *select_crafting_recipe( int &batch_size_out )
     int num_recipe = 0;
     int batch_line = 0;
     const recipe *chosen = nullptr;
-
-    Character &player_character = get_player_character();
+    
+    // NEW
+    // Character &player_character = p;
     const inventory &crafting_inv = player_character.crafting_inventory();
     const std::vector<npc *> helpers = player_character.get_crafting_helpers();
     std::string filterstring;
@@ -678,8 +679,8 @@ const recipe *select_crafting_recipe( int &batch_size_out )
             if( batch ) {
                 current.clear();
                 for( int i = 1; i <= 50; i++ ) {
-                    current.push_back( chosen );
-                    available.push_back( availability( chosen, i ) );
+                    current.push_back( chosen ); // NEW
+                    available.push_back( availability( chosen, i, player_character ) );
                 }
             } else {
                 static_popup popup;
@@ -803,8 +804,8 @@ const recipe *select_crafting_recipe( int &batch_size_out )
                 available.reserve( current.size() );
                 // cache recipe availability on first display
                 for( const recipe *e : current ) {
-                    if( !availability_cache.count( e ) ) {
-                        availability_cache.emplace( e, availability( e ) );
+                    if( !availability_cache.count( e ) ) { // NEW
+                        availability_cache.emplace( e, availability( e, 1, player_character ) );
                     }
                 }
 
@@ -1203,9 +1204,9 @@ static void draw_hidden_amount( const catacurses::window &w, int amount, int num
 }
 
 // Anchors top-right
-static void draw_can_craft_indicator( const catacurses::window &w, const recipe &rec )
+static void draw_can_craft_indicator( const catacurses::window &w, const recipe &rec, Character &player_character) // NEW
 {
-    Character &player_character = get_player_character();
+    // Character &player_character = get_player_character();
     // Draw text
     if( player_character.lighting_craft_speed_multiplier( rec ) <= 0.0f ) {
         right_print( w, 0, 1, i_red, _( "too dark to craft" ) );
