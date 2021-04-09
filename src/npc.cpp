@@ -865,6 +865,44 @@ void npc::starting_weapon( const npc_class_id &type )
     weapon.set_owner( get_faction()->id );
 }
 
+// NEW
+bool npc::do_craft() {
+    int batch_size;
+    const recipe* r = select_crafting_recipe(batch_size, *this);
+    if (r && crafting_allowed(dynamic_cast<Character &> (*this), (recipe &)*r)) {
+        this->make_craft(r->ident(), batch_size);
+        return true;
+    }
+    return false;
+}
+
+// NEW
+bool npc::do_resume_craft() {
+    item_location target = game_menus::inv::assemble(dynamic_cast<player&>(*this));
+    if (target && can_continue_craft(*target)) {
+        item &x = *target;
+        iuse::craft(dynamic_cast<player*>(this), target.get_item(), false, target.position());
+        /*
+        player_activity act(ACT_CRAFT, 0, 0, this->getID().get_value());
+        act.targets.emplace_back(target);
+        assign_activity(act);
+        return true;
+        */
+    } else this->say("I can't do that.");
+    /*
+    if ((assemblies.size() > 0)) {
+        menu.title = "Work on an existing craft";
+        for (auto &it : assemblies) {
+            if(can_continue_craft(*it)) menu.addentry(it->display_name());
+        }
+        menu.query();
+        int re = menu.ret;
+        if (re >= 0) {
+        */
+
+    return false;
+}
+
 bool npc::can_read( const item &book, std::vector<std::string> &fail_reasons )
 {
     if( !book.is_book() ) {
