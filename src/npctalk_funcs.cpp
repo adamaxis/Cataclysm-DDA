@@ -72,6 +72,7 @@ static const activity_id ACT_VEHICLE_REPAIR( "ACT_VEHICLE_REPAIR" );
 static const activity_id ACT_WAIT_NPC( "ACT_WAIT_NPC" );
 static const activity_id ACT_SOCIALIZE( "ACT_SOCIALIZE" );
 static const activity_id ACT_TRAIN( "ACT_TRAIN" );
+static const activity_id ACT_CRAFT("ACT_CRAFT"); // NEW
 
 static const efftype_id effect_allow_sleep( "allow_sleep" );
 static const efftype_id effect_asked_for_item( "asked_for_item" );
@@ -222,6 +223,11 @@ void talk_function::start_trade( npc &p )
 void talk_function::sort_loot( npc &p )
 {
     p.assign_activity( ACT_MOVE_LOOT );
+}
+
+void talk_function::do_craft(npc& p) // NEW
+{
+    p.do_craft();
 }
 
 void talk_function::do_construction( npc &p )
