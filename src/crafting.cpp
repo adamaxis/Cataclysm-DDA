@@ -128,7 +128,8 @@ float Character::lighting_craft_speed_multiplier( const recipe &rec ) const
 {
     // negative is bright, 0 is just bright enough, positive is dark, +7.0f is pitch black
     float darkness = fine_detail_vision_mod() - 4.0f;
-    if( darkness <= 0.0f ) {
+    if( darkness <= 0.0f || !this->is_player()) { // NEW
+        // Skip light check for NPCs - for now
         return 1.0f; // it's bright, go for it
     }
     bool rec_blind = rec.has_flag( flag_BLIND_HARD ) || rec.has_flag( flag_BLIND_EASY );
@@ -804,49 +805,91 @@ void Character::start_craft( craft_command &command, const cata::optional<tripoi
                 STASH,
                 DROP
             };
+            if (!this->is_npc()) { // NEW
+                uilist amenu;
+                amenu.text = string_format( pgettext( "in progress craft", "What to do with the %s?" ),
+                                            craft.display_name() );
 
-            uilist amenu;
-            amenu.text = string_format( pgettext( "in progress craft", "What to do with the %s?" ),
-                                        craft.display_name() );
+                amenu.addentry( WIELD_CRAFT, can_unwield( weapon ).success(),
+                                '1', _( "Dispose of your wielded %s and start working." ), weapon.tname() );
+                amenu.addentry( DROP_CRAFT, true, '2', _( "Put it down and start working." ) );
+                const bool can_stash = can_pickVolume( craft ) &&
+                                       can_pickWeight( craft, !get_option<bool>( "DANGEROUS_PICKUPS" ) );
+                amenu.addentry( STASH, can_stash, '3', _( "Store it in your inventory." ) );
+                amenu.addentry( DROP, true, '4', _( "Drop it on the ground." ) );
 
-            amenu.addentry( WIELD_CRAFT, can_unwield( weapon ).success(),
-                            '1', _( "Dispose of your wielded %s and start working." ), weapon.tname() );
-            amenu.addentry( DROP_CRAFT, true, '2', _( "Put it down and start working." ) );
-            const bool can_stash = can_pickVolume( craft ) &&
-                                   can_pickWeight( craft, !get_option<bool>( "DANGEROUS_PICKUPS" ) );
-            amenu.addentry( STASH, can_stash, '3', _( "Store it in your inventory." ) );
-            amenu.addentry( DROP, true, '4', _( "Drop it on the ground." ) );
-
-            amenu.query();
-            const option choice = amenu.ret == UILIST_CANCEL ? DROP : static_cast<option>( amenu.ret );
-            switch( choice ) {
-                case WIELD_CRAFT: {
-                    if( cata::optional<item_location> it_loc = wield_craft( *this, craft ) ) {
-                        craft_in_world = *it_loc;
-                    } else {
-                        // This almost certainly shouldn't happen
-                        put_into_vehicle_or_drop( *this, item_drop_reason::tumbling, {craft} );
+                amenu.query();
+                const option choice = amenu.ret == UILIST_CANCEL ? DROP : static_cast<option>( amenu.ret );
+                switch( choice ) {
+                    case WIELD_CRAFT: {
+                        if( cata::optional<item_location> it_loc = wield_craft( *this, craft ) ) {
+                            craft_in_world = *it_loc;
+                        } else {
+                            // This almost certainly shouldn't happen
+                            put_into_vehicle_or_drop( *this, item_drop_reason::tumbling, {craft} );
+                        }
+                        break;
                     }
-                    break;
+                    case DROP_CRAFT: {
+                        craft_in_world = set_item_map_or_vehicle( *this, pos(), craft );
+                        break;
+                    }
+                    case STASH: {
+                        set_item_inventory( *this, craft );
+                        break;
+                    }
+                    case DROP: {
+                        put_into_vehicle_or_drop( *this, item_drop_reason::deliberate, {craft} );
+                        break;
+                    }
                 }
-                case DROP_CRAFT: {
-                    craft_in_world = set_item_map_or_vehicle( *this, pos(), craft );
-                    break;
-                }
-                case STASH: {
-                    set_item_inventory( *this, craft );
-                    break;
-                }
-                case DROP: {
-                    put_into_vehicle_or_drop( *this, item_drop_reason::deliberate, {craft} );
-                    break;
-                }
-            }
+            } else { // NEW
+                craft_in_world = set_item_map_or_vehicle(*this, pos(), craft);
+            } // NEW
         }
     } else {
         // We have a workbench, put the item there.
         craft_in_world = set_item_map_or_vehicle( *this, *target, craft );
     }
+    
+    if (this->is_npc()) { // NEW
+        item i = making.create_result();
+        i.charges = craft.charges;
+        if (i.made_of(phase_id::LIQUID)) while (i.charges > 0) {
+            liquid_dest_opt ldo;
+            if (!liquid_handler::get_liquid_target(i, nullptr, PICKUP_RANGE, nullptr, nullptr, nullptr, ldo, get_player_character())) { // gpc required for ownership
+                if (get_player_character().query_yn(_("%s may dump the extra %s on the ground.\n"
+                    "Are you sure you want to proceed?"), this->name, i.display_name())) i.charges = 0;
+
+            } else {
+                if (ldo.dest_opt != LD_GROUND) {
+                    units::volume x = ldo.item_loc.get_item()->get_total_capacity();
+                    i.charges -= i.charges_per_volume(x);
+                } else i.charges = 0;
+                craft_in_world->liquid_container_list.emplace_back(ldo);
+            }
+        }
+        if (making.has_byproducts()) {
+            std::vector<item> bps = making.create_byproducts(i.charges);
+            for (auto& b : bps) {
+                if (b.made_of(phase_id::LIQUID)) while (b.charges > 0) {
+                    liquid_dest_opt ldo;
+                    if (!liquid_handler::get_liquid_target(b, nullptr, PICKUP_RANGE, nullptr, nullptr, nullptr, ldo, get_player_character())) {
+                        if (get_player_character().query_yn(_("%s may dump the extra %s on the ground.\n"
+                            "Are you sure you want to proceed?"), this->name, b.display_name())) b.charges = 0;
+                    }
+                    else {
+                        if (ldo.dest_opt != LD_GROUND) {
+                            units::volume x = ldo.item_loc.get_item()->get_total_capacity();
+                            b.charges -= b.charges_per_volume(x);
+                        }
+                        else b.charges = 0;
+                        craft_in_world->liquid_container_list.emplace_back(ldo);
+                    }
+                }
+            }
+        }
+    } // NEW
 
     if( !craft_in_world.get_item() ) {
         add_msg_if_player( _( "Wield and activate the %s to start crafting." ), craft.tname() );
@@ -1184,9 +1227,15 @@ void Character::complete_craft( item &craft, const cata::optional<tripoint> &loc
             first = false;
             // TODO: reconsider recipe memorization
             if( knows_recipe( &making ) ) {
-                add_msg( _( "You craft %s from memory." ), making.result_name() );
+                add_msg_player_or_npc(
+                    pgettext("completed craft", "You craft the %s from memory."),
+                    pgettext("completed craft", "<npcname> finishes the %s they were working on."),
+                    making.result_name()); // NEW
             } else {
-                add_msg( _( "You craft %s using a book as a reference." ), making.result_name() );
+                add_msg_player_or_npc(
+                    pgettext("completed craft", "You craft %s using a book as a reference."),
+                    pgettext("completed craft", "<npcname> finishes the %s using a book as a reference."),
+                    making.result_name()); // NEW
                 // If we made it, but we don't know it,
                 // we're making it from a book and have a chance to learn it.
                 // Base expected time to learn is 1000*(difficulty^4)/skill/int moves.
@@ -1202,8 +1251,10 @@ void Character::complete_craft( item &craft, const cata::optional<tripoint> &loc
                 const double time_to_learn = 1000 * 8 * std::pow( difficulty, 4 ) / learning_speed;
                 if( x_in_y( making.time_to_craft_moves( *this ),  time_to_learn ) ) {
                     learn_recipe( &making );
-                    add_msg( m_good, _( "You memorized the recipe for %s!" ),
-                             making.result_name() );
+                    this->add_msg_player_or_say(m_good,
+                        pgettext("memorized recipe", "You memorized the recipe for %s!"),
+                        pgettext("memorized recipe", "I think I've memorized the recipe for %s now."),
+                        making.result_name()); // NEW
                 }
             }
         }
@@ -1289,8 +1340,10 @@ void Character::complete_craft( item &craft, const cata::optional<tripoint> &loc
             food_contained.set_owner( get_faction()->id );
         }
 
-        if( newit.made_of( phase_id::LIQUID ) ) {
-            liquid_handler::handle_all_liquid( newit, PICKUP_RANGE );
+        if( newit.made_of( phase_id::LIQUID ) ) { // NEW
+            newit.liquid_container_list = craft.liquid_container_list;
+            if(this->is_player()) liquid_handler::handle_all_liquid( newit, PICKUP_RANGE );
+            else liquid_handler::handle_all_liquid(newit, PICKUP_RANGE, nullptr, *this);
         } else if( !loc && !has_wield_conflicts( craft ) &&
                    can_wield( newit ).success() ) {
             wield_craft( *this, newit );
@@ -1299,7 +1352,7 @@ void Character::complete_craft( item &craft, const cata::optional<tripoint> &loc
         }
     }
 
-    if( making.has_byproducts() ) {
+    if( making.has_byproducts() ) { // NEW TODO
         std::vector<item> bps = making.create_byproducts( batch_size );
         for( auto &bp : bps ) {
             if( bp.has_temperature() ) {
