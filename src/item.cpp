@@ -4660,7 +4660,7 @@ std::string item::dirt_symbol() const
 }
 
 std::string item::tname( unsigned int quantity, bool with_prefix, unsigned int truncate,
-                         bool with_contents ) const
+                         bool with_contents, Character &player_character) const // NEW
 {
     // item damage and/or fouling level
     std::string damtext;
@@ -4762,7 +4762,7 @@ std::string item::tname( unsigned int quantity, bool with_prefix, unsigned int t
         }
     }
 
-    Character &player_character = get_player_character();
+    // NEW Character &player_character = get_player_character();
     std::string tagtext;
     if( is_food() ) {
         if( has_flag( flag_HIDDEN_POISON ) && player_character.get_skill_level( skill_survival ) >= 3 ) {
