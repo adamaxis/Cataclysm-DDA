@@ -42,6 +42,8 @@ class JsonObject;
 class JsonSerializer;
 class JsonValue;
 class item;
+class Character; // NEW
+Character& get_player_character(); // NEW
 
 namespace cata
 {
