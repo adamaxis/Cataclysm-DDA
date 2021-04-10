@@ -536,6 +536,182 @@ item_location game_menus::inv::disassemble( Character &p )
                          _( "You don't have any items you could disassemble." ) );
 }
 
+
+// NEW
+class assemble_inventory_preset : public pickup_inventory_preset
+{
+public:
+    explicit assemble_inventory_preset(const player& p) : pickup_inventory_preset(p), p(p) {
+        const std::string unknown = _("<color_dark_gray>?</color>");
+
+        append_cell([this, &p, unknown](const item_location& loc) -> std::string {
+            auto reqs = loc->get_continue_reqs();
+            return unknown;
+            const auto& book = get_book(loc);
+            if (book.skill) {
+                const SkillLevel& skill = p.get_skill_level_object(book.skill);
+                if (skill.can_train()) {
+                    //~ %1$s: book skill name, %2$d: book skill level, %3$d: player skill level
+                    return string_format(pgettext("skill", "%1$s to %2$d (%3$d)"), book.skill->name(), book.level,
+                        skill.level());
+                }
+            }
+            return std::string();
+            }, _("TRAINS (CURRENT)"), unknown);
+
+        append_cell([this, unknown](const item_location& loc) -> std::string {
+            if (!is_known(loc)) {
+                return unknown;
+            }
+            const auto& book = get_book(loc);
+            const int unlearned = book.recipes.size() - get_known_recipes(book);
+
+            return unlearned > 0 ? std::to_string(unlearned) : std::string();
+            }, _("RECIPES"), unknown);
+        append_cell([this, &p, unknown](const item_location& loc) -> std::string {
+            if (!is_known(loc)) {
+                return unknown;
+            }
+            return good_bad_none(p.book_fun_for(*loc, p));
+            }, _("FUN"), unknown);
+
+        append_cell([this, &p, unknown](const item_location& loc) -> std::string {
+            if (!is_known(loc)) {
+                return unknown;
+            }
+            std::vector<std::string> dummy;
+
+            // This is terrible and needs to be removed asap when this entire file is refactored
+            // to use the new avatar class
+            const avatar* u = dynamic_cast<const avatar*>(&p);
+            if (!u) {
+                return std::string();
+            }
+            const player* reader = u->get_book_reader(*loc, dummy);
+            if (reader == nullptr) {
+                return std::string();  // Just to make sure
+            }
+            // Actual reading time (in turns). Can be penalized.
+            const int actual_turns = u->time_to_read(*loc, *reader) / to_moves<int>(1_turns);
+            // Theoretical reading time (in turns) based on the reader speed. Free of penalties.
+            const int normal_turns = get_book(loc).time * reader->read_speed() / to_moves<int>(1_turns);
+            const std::string duration = to_string_approx(time_duration::from_turns(actual_turns), false);
+
+            if (actual_turns > normal_turns) { // Longer - complicated stuff.
+                return string_format("<color_light_red>%s</color>", duration);
+            }
+
+            return duration; // Normal speed.
+            }, _("CHAPTER IN"), unknown);
+    }
+
+    bool is_shown(const item_location& loc) const override {
+        return loc->is_craft();
+    }
+
+    std::string get_denial(const item_location& loc) const override {
+        // This is terrible and needs to be removed asap when this entire file is refactored
+        // to use the new avatar class
+        const avatar* u = dynamic_cast<const avatar*>(&p);
+        if (!u) {
+            return std::string();
+        }
+
+        std::vector<std::string> denials;
+        if (u->get_book_reader(*loc, denials) == nullptr && !denials.empty() &&
+            !loc->type->can_use("learn_spell")) {
+            return denials.front();
+        }
+        return pickup_inventory_preset::get_denial(loc);
+    }
+
+    std::function<bool(const inventory_entry&)> get_filter(const std::string& filter) const
+        override {
+        auto base_filter = pickup_inventory_preset::get_filter(filter);
+
+        return [this, base_filter, filter](const inventory_entry& e) {
+            if (base_filter(e)) {
+                return true;
+            }
+
+            if (!is_known(e.any_item())) {
+                return false;
+            }
+
+            const auto& book = get_book(e.any_item());
+            if (book.skill && p.get_skill_level_object(book.skill).can_train()) {
+                return lcmatch(book.skill->name(), filter);
+            }
+
+            return false;
+        };
+    }
+
+    bool sort_compare(const inventory_entry& lhs, const inventory_entry& rhs) const override {
+        const bool base_sort = inventory_selector_preset::sort_compare(lhs, rhs);
+
+        const bool known_a = is_known(lhs.any_item());
+        const bool known_b = is_known(rhs.any_item());
+
+        if (!known_a || !known_b) {
+            return (!known_a && !known_b) ? base_sort : !known_a;
+        }
+
+        const auto& book_a = get_book(lhs.any_item());
+        const auto& book_b = get_book(rhs.any_item());
+
+        if (!book_a.skill && !book_b.skill) {
+            return (book_a.fun == book_b.fun) ? base_sort : book_a.fun > book_b.fun;
+        }
+        else if (!book_a.skill || !book_b.skill) {
+            return static_cast<bool>(book_a.skill);
+        }
+
+        const bool train_a = p.get_skill_level(book_a.skill) < book_a.level;
+        const bool train_b = p.get_skill_level(book_b.skill) < book_b.level;
+
+        if (!train_a || !train_b) {
+            return (!train_a && !train_b) ? base_sort : train_a;
+        }
+
+        return base_sort;
+    }
+
+private:
+    const islot_book& get_book(const item_location& loc) const {
+        return *loc->type->book;
+    }
+
+    bool is_known(const item_location& loc) const {
+        // This is terrible and needs to be removed asap when this entire file is refactored
+        // to use the new avatar class
+        if (const avatar* u = dynamic_cast<const avatar*>(&p)) {
+            return u->has_identified(loc->typeId());
+        }
+        return false;
+    }
+
+    int get_known_recipes(const islot_book& book) const {
+        int res = 0;
+        for (const auto& elem : book.recipes) {
+            if (p.knows_recipe(elem.recipe)) {
+                ++res; // If the player knows it, they recognize it even if it's not clearly stated.
+            }
+        }
+        return res;
+    }
+
+    const player& p;
+};
+
+// NEW
+item_location game_menus::inv::assemble(player& p)
+{
+    const std::string msg = p.is_player() ? _("There is nothing nearby to assemble.") :
+        string_format(_("There is nothing near %s to assemble."), p.disp_name());
+    return inv_internal(p, assemble_inventory_preset(p), _("Continue crafting"), 1, msg);
+}
+
 class comestible_inventory_preset : public inventory_selector_preset
 {
     public:
