@@ -918,6 +918,8 @@ class npc : public player
         bool can_read( const item &book, std::vector<std::string> &fail_reasons );
         int time_to_read( const item &book, const player &reader ) const;
         void do_npc_read();
+        bool do_craft(); // NEW
+        bool do_resume_craft(); // NEW
         void stow_item( item &it );
         bool wield( item &it ) override;
         void drop( const drop_locations &what, const tripoint &target,
