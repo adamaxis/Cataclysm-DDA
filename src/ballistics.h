@@ -2,6 +2,8 @@
 #ifndef CATA_SRC_BALLISTICS_H
 #define CATA_SRC_BALLISTICS_H
 
+class Character; // NEW
+Character& get_player_character(); // NEW
 class Creature;
 class dispersion_sources;
 class vehicle;
