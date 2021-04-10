@@ -7733,13 +7733,16 @@ bool Character::pour_into( item &container, item &liquid )
             add_msg_if_player( m_bad, err );
         } else {
             //~ you filled <container> to the brim with <liquid>
-            add_msg_if_player( _( "You filled %1$s to the brim with %2$s." ), container.tname(),
-                               liquid.tname() );
+            add_msg_player_or_npc(_("You filled %1$s to the brim with %2$s."),
+                _("<npcname> fills %1$s to the brim with %2$s."),
+                container.tname(), liquid.tname()); // NEW
         }
         return false;
     }
 
-    add_msg_if_player( _( "You pour %1$s into the %2$s." ), liquid.tname(), container.tname() );
+    add_msg_player_or_npc( _("You pour %1$s into the %2$s."),
+        _("<npcname> pours their %1$s into the %2$s."),
+        liquid.tname(), container.tname() ); // NEW
 
     liquid.charges -= container.fill_with( liquid, amount );
     inv->unsort();
