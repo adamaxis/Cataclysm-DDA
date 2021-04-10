@@ -72,6 +72,9 @@
 #include "vehicle.h"
 #include "vpart_position.h"
 
+class Character; // NEW
+Character& get_player_character(); // NEW
+
 static const activity_id ACT_READ( "ACT_READ" );
 
 static const bionic_id bio_cloak( "bio_cloak" );
