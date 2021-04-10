@@ -6,6 +6,7 @@
 
 class Character;
 Character& get_player_character(); // NEW
+class recipe;
 class item;
 template <typename E> struct enum_traits;
 
@@ -26,4 +27,7 @@ void remove_ammo( item &dis_item, Character &p );
 void remove_ammo( std::list<item> &dis_items, Character &p );
 
 void drop_or_handle( const item &newit, Character &p );
+
+bool crafting_allowed(const Character& p, const recipe& rec); // NEW
+
 #endif // CATA_SRC_CRAFTING_H

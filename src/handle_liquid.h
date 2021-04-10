@@ -43,7 +43,7 @@ namespace liquid_handler
  * charges of the liquid have been transferred.
  * `true` indicates some charges have been transferred (but not necessarily all of them).
  */
-void handle_all_liquid( item liquid, int radius, const item *avoid = nullptr, Character &pc = get_player_character()); // NEW
+void handle_all_liquid( item liquid, int radius, const item *avoid = nullptr, Character &pc = get_player_character() ); // NEW
 
 /**
  * Consume / handle as much of the liquid as possible in varying ways. This function can
@@ -119,6 +119,7 @@ bool get_liquid_target(item& liquid, const item* const source, const int radius,
     const monster* const source_mon,
     liquid_dest_opt& target,
     Character& player_character = get_player_character()); // NEW
+
 } // namespace liquid_handler
 
 #endif // CATA_SRC_HANDLE_LIQUID_H

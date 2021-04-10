@@ -19,6 +19,7 @@
 #include "character_martial_arts.h"
 #include "clzones.h"
 #include "coordinate_conversions.h"
+#include "crafting_gui.h"
 #include "cursesdef.h"
 #include "damage.h"
 #include "debug.h"

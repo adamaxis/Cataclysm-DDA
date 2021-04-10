@@ -1069,7 +1069,7 @@ const recipe *select_crafting_recipe( int &batch_size_out, Character &player_cha
     return chosen;
 }
 
-std::string peek_related_recipe( const recipe *current, const recipe_subset &available )
+std::string peek_related_recipe( const recipe *current, const recipe_subset &available, Character& player_character)
 {
     auto compare_second =
         []( const std::pair<itype_id, std::string> &a,

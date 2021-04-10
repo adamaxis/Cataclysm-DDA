@@ -30,6 +30,7 @@
 #include "map_iterator.h"
 #include "messages.h"
 #include "monster.h"
+#include "npc.h" // NEW
 #include "optional.h"
 #include "player_activity.h"
 #include "string_formatter.h"

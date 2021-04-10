@@ -105,7 +105,7 @@ static const std::string flag_UNCRAFT_SINGLE_CHARGE( "UNCRAFT_SINGLE_CHARGE" );
 
 class basecamp;
 
-static bool crafting_allowed( const Character &p, const recipe &rec )
+bool crafting_allowed( const Character &p, const recipe &rec ) // NEW
 {
     if( p.morale_crafting_speed_multiplier( rec ) <= 0.0f ) {
         add_msg( m_info, _( "Your morale is too low to craft such a difficult thing…" ) );

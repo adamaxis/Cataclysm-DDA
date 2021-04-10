@@ -50,6 +50,7 @@
 #include "game.h"
 #include "game_constants.h"
 #include "gun_mode.h"
+#include "handle_liquid.h" // NEW
 #include "iexamine.h"
 #include "inventory.h"
 #include "item_category.h"
@@ -4928,7 +4929,7 @@ std::string item::display_money( unsigned int quantity, unsigned int total,
     }
 }
 
-std::string item::display_name( unsigned int quantity ) const
+std::string item::display_name(unsigned int quantity, Character& player_character) const // NEW
 {
     std::string name = tname( quantity );
     std::string sidetxt;
@@ -4945,7 +4946,7 @@ std::string item::display_name( unsigned int quantity ) const
             sidetxt = string_format( " (%s)", _( "right" ) );
             break;
     }
-    avatar &player_character = get_avatar();
+    // NEW avatar &player_character = get_avatar();
     int amount = 0;
     int max_amount = 0;
     bool show_amt = false;
