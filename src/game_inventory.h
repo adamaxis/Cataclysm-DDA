@@ -85,7 +85,8 @@ bool compare_items( const item &first, const item &second,
  * @return A list of pairs of item_location, quantity.
  */
 drop_locations multidrop( player &p );
-
+/** Item assembly menu. */
+item_location assemble( player& p); // NEW
 /** Consuming an item. */
 item_location consume( player &p );
 /** Consuming a food item via a custom menu. */
