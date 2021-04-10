@@ -58,6 +58,9 @@ template<typename T>
 class ret_val;
 template <typename T> struct enum_traits;
 
+struct liquid_dest_opt; // NEW
+Character& get_player_character(); // NEW
+
 namespace enchant_vals
 {
 enum class mod : int;
@@ -360,14 +363,15 @@ class item : public visitable
          * of this item (if with_contents = false and item is not empty, "n items" will be added)
          */
         std::string tname( unsigned int quantity = 1, bool with_prefix = true,
-                           unsigned int truncate = 0, bool with_contents = true ) const;
+                           unsigned int truncate = 0, bool with_contents = true,
+                           Character &player_character = get_player_character()) const; // NEW
         std::string display_money( unsigned int quantity, unsigned int total,
                                    const cata::optional<unsigned int> &selected = cata::nullopt ) const;
         /**
          * Returns the item name and the charges or contained charges (if the item can have
          * charges at all). Calls @ref tname with given quantity and with_prefix being true.
          */
-        std::string display_name( unsigned int quantity = 1 ) const;
+        std::string display_name( unsigned int quantity = 1, Character &player_character=get_player_character()) const; // NEW
         /**
          * Return all the information about the item and its type.
          *
@@ -2218,6 +2222,9 @@ class item : public visitable
         override;
         std::list<item> remove_items_with( const std::function<bool( const item & )> &filter,
                                            int count = INT_MAX ) override;
+        // Container lists for NPC crafting. Used for liquid crafting.
+        std::vector<liquid_dest_opt> liquid_container_list; // NEW
+        std::vector<liquid_dest_opt> byproduct_container_list; // NEW
 
     private:
         /** migrates an item into this item. */
