@@ -33,6 +33,7 @@
 #include "weather.h"
 
 class Character;
+Character& get_player_character(); // NEW
 class Creature_tracker;
 class item;
 class location;
