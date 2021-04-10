@@ -98,13 +98,14 @@ static void serialize_liquid_target( player_activity &act, const tripoint &pos )
 
 namespace liquid_handler
 {
-void handle_all_liquid( item liquid, const int radius, const item *const avoid )
+void handle_all_liquid( item liquid, const int radius, const item *const avoid, Character &pc) // NEW
 {
     while( liquid.charges > 0 ) {
         // handle_liquid allows to pour onto the ground, which will handle all the liquid and
         // set charges to 0. This allows terminating the loop.
         // The result of handle_liquid is ignored, the player *has* to handle all the liquid.
-        handle_liquid( liquid, avoid, radius );
+        if(pc.is_player()) handle_liquid( liquid, avoid, radius ); // NEW
+        else handle_liquid(liquid, avoid, radius, nullptr, nullptr, -1, nullptr, pc); // NEW
     }
 }
 
@@ -158,12 +159,12 @@ bool handle_liquid_from_container( item &container, int radius )
     }
     return handled;
 }
-
-static bool get_liquid_target( item &liquid, const item *const source, const int radius,
+bool get_liquid_target( item &liquid, const item *const source, const int radius,
                                const tripoint *const source_pos,
                                const vehicle *const source_veh,
                                const monster *const source_mon,
-                               liquid_dest_opt &target )
+                               liquid_dest_opt &target,
+                               Character &player_character) // NEW - not static
 {
     if( !liquid.made_of_from_type( phase_id::LIQUID ) ) {
         dbg( D_ERROR ) << "game:handle_liquid: Tried to handle_liquid a non-liquid!";
@@ -172,7 +173,7 @@ static bool get_liquid_target( item &liquid, const item *const source, const int
         return false;
     }
 
-    Character &player_character = get_player_character();
+    // NEW Character &player_character = get_player_character();
     if( test_mode ) {
         switch( test_mode_spilling_action ) {
             case test_mode_spilling_action_t::spill_all:
@@ -324,7 +325,8 @@ static bool get_liquid_target( item &liquid, const item *const source, const int
 
 static bool perform_liquid_transfer( item &liquid, const tripoint *const source_pos,
                                      const vehicle *const source_veh, const int part_num,
-                                     const monster *const source_mon, liquid_dest_opt &target )
+                                     const monster *const source_mon, liquid_dest_opt &target,
+                                     Character &player_character) // NEW
 {
     if( !liquid.made_of_from_type( phase_id::LIQUID ) ) {
         dbg( D_ERROR ) << "game:handle_liquid: Tried to handle_liquid a non-liquid!";
@@ -333,7 +335,7 @@ static bool perform_liquid_transfer( item &liquid, const tripoint *const source_
         return false;
     }
 
-    Character &player_character = get_player_character();
+    // NEW Character &player_character = get_player_character();
     const auto create_activity = [&]() {
         if( source_veh != nullptr ) {
             player_character.assign_activity( activity_id( "ACT_FILL_LIQUID" ) );
@@ -438,7 +440,8 @@ static bool perform_liquid_transfer( item &liquid, const tripoint *const source_
 bool handle_liquid( item &liquid, const item *const source, const int radius,
                     const tripoint *const source_pos,
                     const vehicle *const source_veh, const int part_num,
-                    const monster *const source_mon )
+                    const monster *const source_mon,
+                    Character& pc) // NEW
 {
     if( liquid.made_of_from_type( phase_id::SOLID ) ) {
         dbg( D_ERROR ) << "game:handle_liquid: Tried to handle_liquid a non-liquid!";
@@ -450,12 +453,28 @@ bool handle_liquid( item &liquid, const item *const source, const int radius,
         add_msg( _( "The %s froze solid before you could finish." ), liquid.tname() );
         return false;
     }
+    // NEW
     struct liquid_dest_opt liquid_target;
-    if( get_liquid_target( liquid, source, radius, source_pos, source_veh, source_mon,
-                           liquid_target ) ) {
-        return perform_liquid_transfer( liquid, source_pos, source_veh, part_num, source_mon,
-                                        liquid_target );
-    }
+    if (pc.is_player()) {
+        if (get_liquid_target(liquid, source, radius, source_pos, source_veh, source_mon,
+            liquid_target)) {
+            return perform_liquid_transfer(liquid, source_pos, source_veh, part_num, source_mon,
+                liquid_target, pc);
+        }
+    } else {
+        npc* p = dynamic_cast<npc*> (&pc);
+        for (auto& liquid_container : liquid.liquid_container_list) {
+            perform_liquid_transfer(liquid, source_pos, source_veh, part_num, source_mon,
+                liquid_container, pc);
+        }
+        // TODO: add more sophisticated handling of overflow liquids
+        if (liquid.charges > 0) {
+            p->say(_("No room in containers, so I had to dump the %s I made."), liquid.display_name());
+            get_map().add_item_or_charges(pc.pos(), liquid);
+            liquid.charges = 0;
+        }
+        liquid.liquid_container_list.clear();
+    } // NEW
     return false;
 }
 } // namespace liquid_handler
