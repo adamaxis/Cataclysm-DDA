@@ -5,6 +5,7 @@
 #include <list>
 
 class Character;
+Character& get_player_character(); // NEW
 class item;
 template <typename E> struct enum_traits;
 
