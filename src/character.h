@@ -2582,6 +2582,7 @@ class Character : public Creature, public visitable
          * @param time - the amount of time since the last practice tick
          */
         void craft_proficiency_gain( const item &craft, const time_duration &time );
+        void craft_npc_calorie_consume(const item& craft, const time_duration& time ); // NEW
         /**
          * Check if the player can disassemble an item using the current crafting inventory
          * @param obj Object to check for disassembly

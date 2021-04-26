@@ -79,6 +79,8 @@
 #include "weather.h"
 #include "weighted_list.h"
 
+using namespace camp_helpers; // NEW
+
 class character_id;
 
 static const activity_id ACT_MOVE_LOOT( "ACT_MOVE_LOOT" );
@@ -449,14 +451,6 @@ static std::string camp_trip_description( const time_duration &total_time,
         const time_duration &travel_time,
         int distance, int trips, int need_food );
 
-/// Changes the faction food supply by @ref change, 0 returns total food supply, a negative
-/// total food supply hurts morale
-static int camp_food_supply( int change = 0, bool return_days = false );
-/// Same as above but takes a time_duration and consumes from faction food supply for that
-/// duration of work
-static int camp_food_supply( time_duration work );
-/// Returns the total charges of food time_duration @ref work costs
-static int time_to_food( time_duration work );
 /// Changes the faction respect for you by @ref change, returns respect
 static int camp_discipline( int change = 0 );
 /// Changes the faction opinion for you by @ref change, returns opinion
@@ -3734,7 +3728,7 @@ std::string basecamp::farm_description( const tripoint_abs_omt &farm_pos, size_t
 }
 
 // food supply
-int camp_food_supply( int change, bool return_days )
+int camp_helpers::camp_food_supply( int change, bool return_days ) // NEW
 {
     faction *yours = get_player_character().get_faction();
     yours->food_supply += change;
@@ -3750,14 +3744,14 @@ int camp_food_supply( int change, bool return_days )
     return yours->food_supply;
 }
 
-int camp_food_supply( time_duration work )
+int camp_helpers::camp_food_supply( time_duration work )// NEW
 {
-    return camp_food_supply( -time_to_food( work ) );
+    return camp_food_supply( -camp_helpers::time_to_food( work ) );// NEW
 }
 
-int time_to_food( time_duration work )
+int camp_helpers::time_to_food( time_duration work ) // NEW
 {
-    return 2500 * to_hours<int>( work ) / 24;
+    return 2500 * to_minutes<int>(work) / 24 / 60; // NEW
 }
 
 // mission support

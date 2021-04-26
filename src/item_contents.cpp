@@ -258,6 +258,7 @@ bool item_contents::full( bool allow_bucket ) const
 
 bool item_contents::bigger_on_the_inside( const units::volume &container_volume ) const
 {
+    if (!this) return false; // NEW
     units::volume min_logical_volume = 0_ml;
     for( const item_pocket &pocket : contents ) {
         if( pocket.is_type( item_pocket::pocket_type::CONTAINER ) ) {

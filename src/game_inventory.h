@@ -6,7 +6,8 @@
 #include <iosfwd>
 #include <list>
 #include <utility>
-
+#include "faction.h"
+#include "faction_camp.h"
 #include "inventory_ui.h"
 #include "item_location.h"
 #include "type_id.h"
@@ -86,7 +87,7 @@ bool compare_items( const item &first, const item &second,
  */
 drop_locations multidrop( player &p );
 /** Item assembly menu. */
-item_location assemble( player& p); // NEW
+item_location assemble(player &p); // NEW
 /** Consuming an item. */
 item_location consume( player &p );
 /** Consuming a food item via a custom menu. */
@@ -98,6 +99,9 @@ item_location consume_meds( player &p );
 /** Choosing a container for liquid. */
 item_location container_for( Character &you, const item &liquid, int radius = 0,
                              const item *avoid = nullptr );
+/** Choosing a container for liquid. */
+item_location container_for(Character& you, const item& liquid, int radius = 0,
+    std::vector<const item*> avoid = std::vector<const item*>());
 /** Item disassembling menu. */
 item_location disassemble( Character &p );
 /** Gunmod installation menu. */

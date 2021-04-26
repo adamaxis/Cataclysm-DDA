@@ -870,7 +870,7 @@ void npc::starting_weapon( const npc_class_id &type )
 bool npc::do_craft() {
     int batch_size;
     const recipe* r = select_crafting_recipe(batch_size, *this);
-    if (r && crafting_allowed(dynamic_cast<Character &> (*this), (recipe &)*r)) {
+    if (r && crafting_allowed(*this->as_player(), (recipe &)*r)) {
         this->make_craft(r->ident(), batch_size);
         return true;
     }
@@ -879,28 +879,16 @@ bool npc::do_craft() {
 
 // NEW
 bool npc::do_resume_craft() {
-    item_location target = game_menus::inv::assemble(dynamic_cast<player&>(*this));
+    player& pc = *this->as_player();
+    item_location target = game_menus::inv::assemble(pc);
     if (target && can_continue_craft(*target)) {
-        item &x = *target;
-        iuse::craft(dynamic_cast<player*>(this), target.get_item(), false, target.position());
-        /*
-        player_activity act(ACT_CRAFT, 0, 0, this->getID().get_value());
-        act.targets.emplace_back(target);
-        assign_activity(act);
+        pc.add_msg_player_or_npc(
+            pgettext("in progress craft", "You start working on the %s."),
+            pgettext("in progress craft", "<npcname> starts working on the %s."),
+            target->tname());
+        this->assign_activity(player_activity(craft_activity_actor(target, false)));
         return true;
-        */
     } else this->say("I can't do that.");
-    /*
-    if ((assemblies.size() > 0)) {
-        menu.title = "Work on an existing craft";
-        for (auto &it : assemblies) {
-            if(can_continue_craft(*it)) menu.addentry(it->display_name());
-        }
-        menu.query();
-        int re = menu.ret;
-        if (re >= 0) {
-        */
-
     return false;
 }
 

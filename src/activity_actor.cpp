@@ -1805,6 +1805,10 @@ void craft_activity_actor::do_turn( player_activity &act, Character &crafter )
         // Divide by 100 for seconds, 20 for 5%
         const time_duration pct_time = time_duration::from_seconds( base_total_moves / 2000 );
         crafter.craft_proficiency_gain( craft, pct_time * five_percent_steps );
+        if (!crafter.is_player()) { // NEW
+            auto cal_time = pct_time * five_percent_steps + 40_seconds; // 40 seconds = ~1 calorie opportunity cost
+            crafter.craft_npc_calorie_consume(craft, cal_time);
+        }
     }
 
     // Unlike skill, tools are consumed once at the start and should not be consumed at the end

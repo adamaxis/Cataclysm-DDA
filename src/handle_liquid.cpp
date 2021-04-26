@@ -99,14 +99,15 @@ static void serialize_liquid_target( player_activity &act, const tripoint &pos )
 
 namespace liquid_handler
 {
-void handle_all_liquid( item liquid, const int radius, const item *const avoid, Character &pc) // NEW
+void handle_all_liquid( item liquid, const int radius, const item *const avoid, Character *pc, std::vector<liquid_dest_opt> *dest_opt) // NEW
 {
+    if (!pc) pc = &get_player_character(); // NEW
     while( liquid.charges > 0 ) {
         // handle_liquid allows to pour onto the ground, which will handle all the liquid and
         // set charges to 0. This allows terminating the loop.
         // The result of handle_liquid is ignored, the player *has* to handle all the liquid.
-        if(pc.is_player()) handle_liquid( liquid, avoid, radius ); // NEW
-        else handle_liquid(liquid, avoid, radius, nullptr, nullptr, -1, nullptr, pc); // NEW
+        if(pc->is_player()) handle_liquid( liquid, avoid, radius ); // NEW
+        else handle_liquid(liquid, avoid, radius, nullptr, nullptr, -1, nullptr, pc, dest_opt); // NEW
     }
 }
 
@@ -165,8 +166,9 @@ bool get_liquid_target( item &liquid, const item *const source, const int radius
                                const vehicle *const source_veh,
                                const monster *const source_mon,
                                liquid_dest_opt &target,
-                               Character &player_character) // NEW - not static
+                               Character *player_character) // NEW - not static
 {
+    if (!player_character) player_character = &get_player_character(); // NEW
     if( !liquid.made_of_from_type( phase_id::LIQUID ) ) {
         dbg( D_ERROR ) << "game:handle_liquid: Tried to handle_liquid a non-liquid!";
         debugmsg( "Tried to handle_liquid a non-liquid!" );
@@ -178,7 +180,7 @@ bool get_liquid_target( item &liquid, const item *const source, const int radius
     if( test_mode ) {
         switch( test_mode_spilling_action ) {
             case test_mode_spilling_action_t::spill_all:
-                target.pos = player_character.pos();
+                target.pos = player_character->pos(); // NEW
                 target.dest_opt = LD_GROUND;
                 return true;
             case test_mode_spilling_action_t::cancel_spill:
@@ -207,8 +209,8 @@ bool get_liquid_target( item &liquid, const item *const source, const int radius
         menu.text = string_format( pgettext( "liquid", "What to do with the %s?" ), liquid_name );
     }
     std::vector<std::function<void()>> actions;
-    if( player_character.can_consume_as_is( liquid ) && !source_mon && ( source_veh || source_pos ) ) {
-        if( player_character.can_fuel_bionic_with( liquid ) ) {
+    if( player_character->can_consume_as_is( liquid ) && !source_mon && ( source_veh || source_pos ) ) { // NEW
+        if( player_character->can_fuel_bionic_with( liquid ) ) { // NEW
             menu.addentry( -1, true, 'e', _( "Fuel bionic with it" ) );
         } else {
             menu.addentry( -1, true, 'e', _( "Consume it" ) );
@@ -221,7 +223,7 @@ bool get_liquid_target( item &liquid, const item *const source, const int radius
     // This handles containers found anywhere near the player, including on the map and in vehicle storage.
     menu.addentry( -1, true, 'c', _( "Pour into a container" ) );
     actions.emplace_back( [&]() {
-        target.item_loc = game_menus::inv::container_for( player_character, liquid,
+        target.item_loc = game_menus::inv::container_for( *player_character, liquid, // NEW
                           radius, /*avoid=*/source );
         item *const cont = target.item_loc.get_item();
 
@@ -239,7 +241,7 @@ bool get_liquid_target( item &liquid, const item *const source, const int radius
     } );
     // This handles liquids stored in vehicle parts directly (e.g. tanks).
     std::set<vehicle *> opts;
-    for( const tripoint &e : here.points_in_radius( player_character.pos(), 1 ) ) {
+    for( const tripoint &e : here.points_in_radius( player_character->pos(), 1 ) ) { // NEW
         vehicle *veh = veh_pointer_or_null( here.veh_at( e ) );
         vehicle_part_range vpr = veh->get_all_parts();
         if( veh && std::any_of( vpr.begin(), vpr.end(), [&liquid]( const vpart_reference & pt ) {
@@ -259,14 +261,14 @@ bool get_liquid_target( item &liquid, const item *const source, const int radius
         } );
     }
 
-    for( const tripoint &target_pos : here.points_in_radius( player_character.pos(), 1 ) ) {
+    for( const tripoint &target_pos : here.points_in_radius( player_character->pos(), 1 ) ) { // NEW
         if( !iexamine::has_keg( target_pos ) ) {
             continue;
         }
         if( source_pos != nullptr && *source_pos == target_pos ) {
             continue;
         }
-        const std::string dir = direction_name( direction_from( player_character.pos(), target_pos ) );
+        const std::string dir = direction_name( direction_from( player_character->pos(), target_pos ) ); // NEW
         menu.addentry( -1, true, MENU_AUTOASSIGN, _( "Pour into an adjacent keg (%s)" ), dir );
         actions.emplace_back( [ &, target_pos]() {
             target.pos = target_pos;
@@ -327,7 +329,7 @@ bool get_liquid_target( item &liquid, const item *const source, const int radius
 static bool perform_liquid_transfer( item &liquid, const tripoint *const source_pos,
                                      const vehicle *const source_veh, const int part_num,
                                      const monster *const source_mon, liquid_dest_opt &target,
-                                     Character &player_character) // NEW
+                                     Character &player_character=get_player_character()) // NEW
 {
     if( !liquid.made_of_from_type( phase_id::LIQUID ) ) {
         dbg( D_ERROR ) << "game:handle_liquid: Tried to handle_liquid a non-liquid!";
@@ -442,8 +444,10 @@ bool handle_liquid( item &liquid, const item *const source, const int radius,
                     const tripoint *const source_pos,
                     const vehicle *const source_veh, const int part_num,
                     const monster *const source_mon,
-                    Character& pc) // NEW
+                    Character* pc,
+                    std::vector<liquid_dest_opt>* dest_opt) // NEW
 {
+    if (!pc) pc = &get_player_character();
     if( liquid.made_of_from_type( phase_id::SOLID ) ) {
         dbg( D_ERROR ) << "game:handle_liquid: Tried to handle_liquid a non-liquid!";
         debugmsg( "Tried to handle_liquid a non-liquid!" );
@@ -456,25 +460,25 @@ bool handle_liquid( item &liquid, const item *const source, const int radius,
     }
     // NEW
     struct liquid_dest_opt liquid_target;
-    if (pc.is_player()) {
+    if (pc->is_player()) {
         if (get_liquid_target(liquid, source, radius, source_pos, source_veh, source_mon,
             liquid_target)) {
             return perform_liquid_transfer(liquid, source_pos, source_veh, part_num, source_mon,
-                liquid_target, pc);
+                liquid_target, *pc);
         }
     } else {
-        npc* p = dynamic_cast<npc*> (&pc);
-        for (auto& liquid_container : liquid.liquid_container_list) {
-            perform_liquid_transfer(liquid, source_pos, source_veh, part_num, source_mon,
-                liquid_container, pc);
+        if(dest_opt) for (auto &liquid_target : *dest_opt) {
+            if (!liquid_target.item_loc->is_null()) {
+                perform_liquid_transfer(liquid, source_pos, source_veh, part_num, source_mon,
+                    liquid_target, *pc); // NEW CHANGE
+            }
         }
         // TODO: add more sophisticated handling of overflow liquids
         if (liquid.charges > 0) {
-            p->say(_("No room in containers, so I had to dump the %s I made."), liquid.display_name());
-            get_map().add_item_or_charges(pc.pos(), liquid);
+            pc->add_msg_player_or_say(_("No room in containers, so I had to dump the %s I made."), liquid.tname());
+            get_map().add_item_or_charges(pc->pos(), liquid);
             liquid.charges = 0;
         }
-        liquid.liquid_container_list.clear();
     } // NEW
     return false;
 }

@@ -25,6 +25,7 @@
 #include "damage.h"
 #include "debug.h"
 #include "enums.h"
+#include "faction_camp.h" // NEW
 #include "flag.h"
 #include "game.h"
 #include "input.h"
@@ -405,7 +406,7 @@ class liquid_inventory_selector_preset : public inventory_selector_preset
 {
     public:
         explicit liquid_inventory_selector_preset( const item &liquid,
-                const item *const avoid ) : liquid( liquid ), avoid( avoid ) {
+            std::vector<const item*> avoid) : liquid( liquid ), avoid( avoid ) {
 
             append_cell( []( const item_location & loc ) {
                 if( loc.get_item() ) {
@@ -417,9 +418,10 @@ class liquid_inventory_selector_preset : public inventory_selector_preset
         }
 
         bool is_shown( const item_location &location ) const override {
-            if( location.get_item() == avoid ) {
-                return false;
+            for (auto& av : avoid) {
+                if (location.get_item() == av) return false;
             }
+
             if( location.where() == item_location::type::character ) {
                 Character *character = g->critter_at<Character>( location.position() );
                 if( character == nullptr ) {
@@ -434,13 +436,18 @@ class liquid_inventory_selector_preset : public inventory_selector_preset
 
     private:
         const item &liquid;
-        const item *const avoid;
+        std::vector<const item*> avoid;
 };
-
+// NEW
+item_location game_menus::inv::container_for(Character& you, const item& liquid, int radius,
+    const item* const avoid) {
+    return container_for(you, liquid, radius, std::vector<const item*>{avoid});
+}
+// NEW
 item_location game_menus::inv::container_for( Character &you, const item &liquid, int radius,
-        const item *const avoid )
+        std::vector<const item *> avoid )
 {
-    return inv_internal( you, liquid_inventory_selector_preset( liquid, avoid ),
+    return inv_internal(you, liquid_inventory_selector_preset(liquid, avoid),
                          string_format( _( "Container for %s | %s %s" ), liquid.display_name( liquid.charges ),
                                         format_volume( liquid.volume() ), volume_units_abbr() ), radius,
                          string_format( _( "You don't have a suitable container for carrying %s." ),
@@ -538,71 +545,22 @@ item_location game_menus::inv::disassemble( Character &p )
 
 
 // NEW
-class assemble_inventory_preset : public pickup_inventory_preset
+class assemble_inventory_preset : public inventory_selector_preset
 {
 public:
-    explicit assemble_inventory_preset(const player& p) : pickup_inventory_preset(p), p(p) {
+    explicit assemble_inventory_preset(const player& p, const inventory &inv) : inventory_selector_preset(), p(p), inv(inv) {
         const std::string unknown = _("<color_dark_gray>?</color>");
+        faction* pc = get_player_character().get_faction();
+        int kcal = pc->food_supply;
+        append_cell([this, &p, unknown, kcal, pc](const item_location& loc) -> std::string {
+            return string_format(_("<color_cyan>%s</color>"), to_string(time_duration::from_turns(get_cal_cost(loc, p))));
+            }, _("TIME TO CRAFT"));
 
-        append_cell([this, &p, unknown](const item_location& loc) -> std::string {
-            auto reqs = loc->get_continue_reqs();
-            return unknown;
-            const auto& book = get_book(loc);
-            if (book.skill) {
-                const SkillLevel& skill = p.get_skill_level_object(book.skill);
-                if (skill.can_train()) {
-                    //~ %1$s: book skill name, %2$d: book skill level, %3$d: player skill level
-                    return string_format(pgettext("skill", "%1$s to %2$d (%3$d)"), book.skill->name(), book.level,
-                        skill.level());
-                }
-            }
-            return std::string();
-            }, _("TRAINS (CURRENT)"), unknown);
+        append_cell([this, &p, unknown, kcal, pc](const item_location& loc) -> std::string {
+            return string_format(_("<color_cyan>%d</color>"), camp_helpers::time_to_food(time_duration::from_turns(get_cal_cost(loc, p))));
+            //if (must_feed && camp_food_supply() < time_to_food(duration)) {
+            }, string_format(_("CALORIE COST (CAMP KCAL : %d)"), kcal));
 
-        append_cell([this, unknown](const item_location& loc) -> std::string {
-            if (!is_known(loc)) {
-                return unknown;
-            }
-            const auto& book = get_book(loc);
-            const int unlearned = book.recipes.size() - get_known_recipes(book);
-
-            return unlearned > 0 ? std::to_string(unlearned) : std::string();
-            }, _("RECIPES"), unknown);
-        append_cell([this, &p, unknown](const item_location& loc) -> std::string {
-            if (!is_known(loc)) {
-                return unknown;
-            }
-            return good_bad_none(p.book_fun_for(*loc, p));
-            }, _("FUN"), unknown);
-
-        append_cell([this, &p, unknown](const item_location& loc) -> std::string {
-            if (!is_known(loc)) {
-                return unknown;
-            }
-            std::vector<std::string> dummy;
-
-            // This is terrible and needs to be removed asap when this entire file is refactored
-            // to use the new avatar class
-            const avatar* u = dynamic_cast<const avatar*>(&p);
-            if (!u) {
-                return std::string();
-            }
-            const player* reader = u->get_book_reader(*loc, dummy);
-            if (reader == nullptr) {
-                return std::string();  // Just to make sure
-            }
-            // Actual reading time (in turns). Can be penalized.
-            const int actual_turns = u->time_to_read(*loc, *reader) / to_moves<int>(1_turns);
-            // Theoretical reading time (in turns) based on the reader speed. Free of penalties.
-            const int normal_turns = get_book(loc).time * reader->read_speed() / to_moves<int>(1_turns);
-            const std::string duration = to_string_approx(time_duration::from_turns(actual_turns), false);
-
-            if (actual_turns > normal_turns) { // Longer - complicated stuff.
-                return string_format("<color_light_red>%s</color>", duration);
-            }
-
-            return duration; // Normal speed.
-            }, _("CHAPTER IN"), unknown);
     }
 
     bool is_shown(const item_location& loc) const override {
@@ -610,24 +568,27 @@ public:
     }
 
     std::string get_denial(const item_location& loc) const override {
-        // This is terrible and needs to be removed asap when this entire file is refactored
-        // to use the new avatar class
-        const avatar* u = dynamic_cast<const avatar*>(&p);
-        if (!u) {
-            return std::string();
+        if (p.has_recipe(&loc->get_making(), inv, p.get_crafting_helpers()) == -1) {
+            return string_format(_("%s doesn't know the recipe for this"), p.get_name());
         }
+        if (camp_helpers::camp_food_supply() < get_cal_cost(loc, *p.as_player())) {
+            return string_format(_("You don't have enough camp food to feed %s for this job"), p.get_name());
+        }
+        return inventory_selector_preset::get_denial(loc);
+    }
 
-        std::vector<std::string> denials;
-        if (u->get_book_reader(*loc, denials) == nullptr && !denials.empty() &&
-            !loc->type->can_use("learn_spell")) {
-            return denials.front();
-        }
-        return pickup_inventory_preset::get_denial(loc);
+    static int get_cal_cost(const item_location& loc, const player &c) {
+        if (!loc || !&c) return -1;
+        auto& r = loc->get_making();
+        int percent_complete = loc->item_counter / 100000;
+        auto y = c.expected_time_to_craft(r, loc->charges, false) / 100;
+        y = (y * (100 - percent_complete)) / 100;
+        return y;
     }
 
     std::function<bool(const inventory_entry&)> get_filter(const std::string& filter) const
         override {
-        auto base_filter = pickup_inventory_preset::get_filter(filter);
+        auto base_filter = inventory_selector_preset::get_filter(filter);
 
         return [this, base_filter, filter](const inventory_entry& e) {
             if (base_filter(e)) {
@@ -702,6 +663,7 @@ private:
     }
 
     const player& p;
+    const inventory& inv;
 };
 
 // NEW
@@ -709,7 +671,7 @@ item_location game_menus::inv::assemble(player& p)
 {
     const std::string msg = p.is_player() ? _("There is nothing nearby to assemble.") :
         string_format(_("There is nothing near %s to assemble."), p.disp_name());
-    return inv_internal(p, assemble_inventory_preset(p), _("Continue crafting"), 1, msg);
+    return inv_internal(p, assemble_inventory_preset(p, p.crafting_inventory()), _("Continue crafting"), 1, msg);
 }
 
 class comestible_inventory_preset : public inventory_selector_preset

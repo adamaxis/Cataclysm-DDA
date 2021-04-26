@@ -708,7 +708,7 @@ item item::split( int qty )
 bool item::is_null() const
 {
     // Actually, type should never by null at all.
-    return ( type == nullptr || type == nullitem() || typeId().is_null() );
+    return ( this == nullptr || type == nullptr || type == nullitem() || typeId().is_null() ); // NEW
 }
 
 bool item::is_unarmed_weapon() const
@@ -7294,6 +7294,7 @@ units::volume item::max_containable_volume() const
 
 bool item::can_contain( const item &it ) const
 {
+    if (!this) return false; // NEW
     if( this == &it ) {
         // does the set of all sets contain itself?
         return false;
