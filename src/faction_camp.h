@@ -67,6 +67,8 @@ namespace camp_helpers { // NEW
     int camp_food_supply(int change = 0, bool return_days=false);
     /// Returns the total charges of food time_duration @ref work costs
     int time_to_food(time_duration work);
+    /// Returns the calorie cost of an assembly
+    int get_cal_cost(const item_location& loc, const player& c);
 }
 
 #endif // CATA_SRC_FACTION_CAMP_H

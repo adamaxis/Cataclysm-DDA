@@ -58,7 +58,8 @@ static std::map<std::string, std::string> normalized_names;
 
 static bool query_is_yes( const std::string &query );
 static void draw_hidden_amount( const catacurses::window &w, int amount, int num_recipe );
-static void draw_can_craft_indicator( const catacurses::window &w, const recipe &rec, Character &player_character=get_player_character() ); // NEW
+static void draw_camp_calorie_amount(const catacurses::window& w); // NEW
+static void draw_can_craft_indicator( const catacurses::window &w, const recipe &rec, Character *player_character=nullptr ); // NEW
 static void draw_recipe_tabs( const catacurses::window &w, const std::string &tab,
                               TAB_MODE mode = NORMAL );
 static void draw_recipe_subtabs( const catacurses::window &w, const std::string &tab,
@@ -146,6 +147,7 @@ struct availability {
                         inv, all_items_filter, batch_size, craft_flags::start_only ) && has_proficiencies;
         can_craft_non_rotten = req.can_make_with_inventory(
                                    inv, no_rotten_filter, batch_size, craft_flags::start_only );
+        has_food = (player.is_player() ? true :(camp_helpers::camp_food_supply() > camp_helpers::time_to_food(time_duration::from_turns(player.expected_time_to_craft(*r, batch_size, false))))); // NEW
         const requirement_data &simple_req = r->simple_requirements();
         apparently_craftable = simple_req.can_make_with_inventory(
                                    inv, all_items_filter, batch_size, craft_flags::start_only );
@@ -165,6 +167,7 @@ struct availability {
     bool apparently_craftable;
     bool has_proficiencies;
     bool has_all_skills;
+    bool has_food;
     float proficiency_time_maluses;
     float proficiency_failure_maluses;
 
@@ -179,12 +182,12 @@ struct availability {
     }
 
     nc_color color( bool ignore_missing_skills = false ) const {
-        if( !can_craft ) {
+        if( !can_craft) {
             return c_dark_gray;
         } else if( !can_craft_non_rotten ) {
             return has_all_skills || ignore_missing_skills ? c_brown : c_red;
         } else {
-            return has_all_skills || ignore_missing_skills ? c_white : c_yellow;
+            return has_all_skills || ignore_missing_skills || has_food ? c_white : c_yellow;
         }
     }
 };
@@ -237,6 +240,11 @@ static std::vector<std::string> recipe_info(
                           recp.has_flag( flag_BLIND_HARD ) ? _( "Hard" ) :
                           _( "Impossible" ) );
 
+    if (!guy.is_player()) { // NEW
+        oss << string_format(_("Camp Food Cost(approx): %d kcal\n"),
+            camp_helpers::time_to_food(time_duration::from_turns(expected_turns)+10_minutes));
+    }
+
     std::string nearby_string;
     const inventory &crafting_inv = guy.crafting_inventory();
     const int nearby_amount = crafting_inv.count_item( recp.result() );
@@ -260,6 +268,12 @@ static std::vector<std::string> recipe_info(
                   "recipe <color_yellow>may appear to be craftable "
                   "when it is not</color>.\n" );
     }
+
+    //const bool enough_food = (camp_helpers::camp_food_supply() > camp_helpers::time_to_food(time_duration::from_turns(expected_turns))); // NEW
+    if (can_craft_this && !avail.has_food) {
+        oss << _("<color_red>Not enough available camp food to craft. Followers may revolt.</color>\n");
+    }
+
     if( !can_craft_this && avail.apparently_craftable && avail.has_proficiencies ) {
         oss << _( "<color_red>Cannot be crafted because the same item is needed "
                   "for multiple components</color>\n" );
@@ -318,7 +332,7 @@ static std::vector<std::string> recipe_info(
     return result;
 }
 
-const recipe *select_crafting_recipe( int &batch_size_out, Character &player_character) // NEW
+const recipe *select_crafting_recipe( int &batch_size_out, Character *player_character) // NEW
 {
     struct {
         const recipe *recp = nullptr;
@@ -496,12 +510,13 @@ const recipe *select_crafting_recipe( int &batch_size_out, Character &player_cha
     int batch_line = 0;
     const recipe *chosen = nullptr;
     
+    if (!player_character) player_character = &get_player_character(); // NEW
     // NEW Character &player_character = p;
-    const inventory &crafting_inv = player_character.crafting_inventory();
-    const std::vector<npc *> helpers = player_character.get_crafting_helpers();
+    const inventory &crafting_inv = player_character->crafting_inventory(); // NEW
+    const std::vector<npc *> helpers = player_character->get_crafting_helpers(); // NEW
     std::string filterstring;
 
-    const auto &available_recipes = player_character.get_available_recipes( crafting_inv, &helpers );
+    const auto &available_recipes = player_character->get_available_recipes( crafting_inv, &helpers ); // NEW
     std::map<const recipe *, availability> availability_cache;
 
     ui.on_redraw( [&]( const ui_adaptor & ) {
@@ -511,6 +526,10 @@ const recipe *select_crafting_recipe( int &batch_size_out, Character &player_cha
 
         if( !show_hidden ) {
             draw_hidden_amount( w_head, num_hidden, num_recipe );
+        }
+
+        if (!player_character->is_player()) { // NEW
+            draw_camp_calorie_amount(w_head);
         }
 
         // Clear the screen of recipe data, and draw it anew
@@ -620,7 +639,7 @@ const recipe *select_crafting_recipe( int &batch_size_out, Character &player_cha
             }
 
             const std::vector<std::string> &info = cached_recipe_info(
-                    recp, avail, player_character, qry_comps, batch_size, fold_width, color );
+                    recp, avail, *player_character, qry_comps, batch_size, fold_width, color ); // NEW
 
             const int total_lines = info.size();
             if( recipe_info_scroll < 0 ) {
@@ -679,7 +698,7 @@ const recipe *select_crafting_recipe( int &batch_size_out, Character &player_cha
                 current.clear();
                 for( int i = 1; i <= 50; i++ ) {
                     current.push_back( chosen );
-                    available.push_back( availability( chosen, i, player_character ) ); // NEW
+                    available.push_back( availability( chosen, i, *player_character ) ); // NEW
                 }
             } else {
                 static_popup popup;
@@ -749,7 +768,7 @@ const recipe *select_crafting_recipe( int &batch_size_out, Character &player_cha
                                     break;
 
                                 case 'm': {
-                                    const recipe_subset &learned = player_character.get_learned_recipes();
+                                    const recipe_subset &learned = player_character->get_learned_recipes(); // NEW
                                     recipe_subset temp_subset;
                                     if( query_is_yes( qry_filter_str ) ) {
                                         temp_subset = available_recipes.intersection( learned );
@@ -804,7 +823,7 @@ const recipe *select_crafting_recipe( int &batch_size_out, Character &player_cha
                 // cache recipe availability on first display
                 for( const recipe *e : current ) {
                     if( !availability_cache.count( e ) ) {
-                        availability_cache.emplace( e, availability( e, 1, player_character ) ); // NEW
+                        availability_cache.emplace( e, availability( e, 1, *player_character ) ); // NEW
                     }
                 }
 
@@ -895,7 +914,7 @@ const recipe *select_crafting_recipe( int &batch_size_out, Character &player_cha
         } else if( action == "CONFIRM" ) {
             if( available.empty() || !available[line].can_craft ) {
                 popup( _( "You can't do that!  Press [<color_yellow>ESC</color>]!" ) );
-            } else if( !player_character.check_eligible_containers_for_crafting( *current[line],
+            } else if( !player_character->check_eligible_containers_for_crafting( *current[line], // NEW
                        ( batch ) ? line + 1 : 1 ) ) {
                 // popup is already inside check
             } else {
@@ -1202,19 +1221,25 @@ static void draw_hidden_amount( const catacurses::window &w, int amount, int num
     }
 }
 
-// Anchors top-right
-static void draw_can_craft_indicator( const catacurses::window &w, const recipe &rec, Character &player_character) // NEW
+static void draw_camp_calorie_amount(const catacurses::window& w) // NEW
 {
+    right_print(w, 2, 1, c_green, string_format(_("*Camp kcal reserve: %d *"), camp_helpers::camp_food_supply()));
+}
+
+// Anchors top-right
+static void draw_can_craft_indicator( const catacurses::window &w, const recipe &rec, Character *player_character) // NEW
+{
+    if (!player_character) player_character = &get_player_character(); // NEW
     // NEW Character &player_character = get_player_character();
     // Draw text
-    if( player_character.lighting_craft_speed_multiplier( rec ) <= 0.0f ) {
+    if( player_character->lighting_craft_speed_multiplier( rec ) <= 0.0f ) { // NEW
         right_print( w, 0, 1, i_red, _( "too dark to craft" ) );
-    } else if( player_character.crafting_speed_multiplier( rec ) <= 0.0f ) {
+    } else if( player_character->crafting_speed_multiplier( rec ) <= 0.0f ) { // NEW
         // Technically not always only too sad, but must be too sad
         right_print( w, 0, 1, i_red, _( "too sad to craft" ) );
-    } else if( player_character.crafting_speed_multiplier( rec ) < 1.0f ) {
+    } else if( player_character->crafting_speed_multiplier( rec ) < 1.0f ) { // NEW
         right_print( w, 0, 1, i_yellow, string_format( _( "crafting is slow %d%%" ),
-                     static_cast<int>( player_character.crafting_speed_multiplier( rec ) * 100 ) ) );
+                     static_cast<int>( player_character->crafting_speed_multiplier( rec ) * 100 ) ) ); // NEW
     } else {
         right_print( w, 0, 1, i_green, _( "craftable" ) );
     }

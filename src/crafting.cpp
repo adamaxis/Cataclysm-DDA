@@ -944,12 +944,7 @@ void Character::craft_skill_gain( const item &craft, const int &num_practice_tic
     }
 }
 
-void Character::craft_npc_calorie_consume( const item& craft, const time_duration& time ) { // NEW
-    if (!craft.is_craft()) {
-        debugmsg("craft_npc_calorie_consume() called on non-craft %s", craft.tname());
-        return;
-    }
-    const recipe& making = craft.get_making();
+void Character::craft_npc_calorie_consume( const time_duration& time ) { // NEW
     camp_helpers::camp_food_supply(time);
     //debugmsg("craft_npc_calorie_consume() : %d", camp_helpers::time_to_food(time));
 }

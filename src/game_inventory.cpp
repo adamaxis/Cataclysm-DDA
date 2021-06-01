@@ -553,11 +553,11 @@ public:
         faction* pc = get_player_character().get_faction();
         int kcal = pc->food_supply;
         append_cell([this, &p, unknown, kcal, pc](const item_location& loc) -> std::string {
-            return string_format(_("<color_cyan>%s</color>"), to_string(time_duration::from_turns(get_cal_cost(loc, p))));
+            return string_format(_("<color_cyan>%s</color>"), to_string(time_duration::from_turns(camp_helpers::get_cal_cost(loc, p))));
             }, _("TIME TO CRAFT"));
 
         append_cell([this, &p, unknown, kcal, pc](const item_location& loc) -> std::string {
-            return string_format(_("<color_cyan>%d</color>"), camp_helpers::time_to_food(time_duration::from_turns(get_cal_cost(loc, p))));
+            return string_format(_("<color_cyan>%d</color>"), camp_helpers::time_to_food(time_duration::from_turns(camp_helpers::get_cal_cost(loc, p))));
             //if (must_feed && camp_food_supply() < time_to_food(duration)) {
             }, string_format(_("CALORIE COST (CAMP KCAL : %d)"), kcal));
 
@@ -571,97 +571,13 @@ public:
         if (p.has_recipe(&loc->get_making(), inv, p.get_crafting_helpers()) == -1) {
             return string_format(_("%s doesn't know the recipe for this"), p.get_name());
         }
-        if (camp_helpers::camp_food_supply() < get_cal_cost(loc, *p.as_player())) {
+        if (camp_helpers::camp_food_supply() < camp_helpers::get_cal_cost(loc, *p.as_player())) {
             return string_format(_("You don't have enough camp food to feed %s for this job"), p.get_name());
         }
         return inventory_selector_preset::get_denial(loc);
     }
 
-    static int get_cal_cost(const item_location& loc, const player &c) {
-        if (!loc || !&c) return -1;
-        auto& r = loc->get_making();
-        int percent_complete = loc->item_counter / 100000;
-        auto y = c.expected_time_to_craft(r, loc->charges, false) / 100;
-        y = (y * (100 - percent_complete)) / 100;
-        return y;
-    }
-
-    std::function<bool(const inventory_entry&)> get_filter(const std::string& filter) const
-        override {
-        auto base_filter = inventory_selector_preset::get_filter(filter);
-
-        return [this, base_filter, filter](const inventory_entry& e) {
-            if (base_filter(e)) {
-                return true;
-            }
-
-            if (!is_known(e.any_item())) {
-                return false;
-            }
-
-            const auto& book = get_book(e.any_item());
-            if (book.skill && p.get_skill_level_object(book.skill).can_train()) {
-                return lcmatch(book.skill->name(), filter);
-            }
-
-            return false;
-        };
-    }
-
-    bool sort_compare(const inventory_entry& lhs, const inventory_entry& rhs) const override {
-        const bool base_sort = inventory_selector_preset::sort_compare(lhs, rhs);
-
-        const bool known_a = is_known(lhs.any_item());
-        const bool known_b = is_known(rhs.any_item());
-
-        if (!known_a || !known_b) {
-            return (!known_a && !known_b) ? base_sort : !known_a;
-        }
-
-        const auto& book_a = get_book(lhs.any_item());
-        const auto& book_b = get_book(rhs.any_item());
-
-        if (!book_a.skill && !book_b.skill) {
-            return (book_a.fun == book_b.fun) ? base_sort : book_a.fun > book_b.fun;
-        }
-        else if (!book_a.skill || !book_b.skill) {
-            return static_cast<bool>(book_a.skill);
-        }
-
-        const bool train_a = p.get_skill_level(book_a.skill) < book_a.level;
-        const bool train_b = p.get_skill_level(book_b.skill) < book_b.level;
-
-        if (!train_a || !train_b) {
-            return (!train_a && !train_b) ? base_sort : train_a;
-        }
-
-        return base_sort;
-    }
-
 private:
-    const islot_book& get_book(const item_location& loc) const {
-        return *loc->type->book;
-    }
-
-    bool is_known(const item_location& loc) const {
-        // This is terrible and needs to be removed asap when this entire file is refactored
-        // to use the new avatar class
-        if (const avatar* u = dynamic_cast<const avatar*>(&p)) {
-            return u->has_identified(loc->typeId());
-        }
-        return false;
-    }
-
-    int get_known_recipes(const islot_book& book) const {
-        int res = 0;
-        for (const auto& elem : book.recipes) {
-            if (p.knows_recipe(elem.recipe)) {
-                ++res; // If the player knows it, they recognize it even if it's not clearly stated.
-            }
-        }
-        return res;
-    }
-
     const player& p;
     const inventory& inv;
 };

@@ -107,7 +107,9 @@ void handle_all_liquid( item liquid, const int radius, const item *const avoid, 
         // set charges to 0. This allows terminating the loop.
         // The result of handle_liquid is ignored, the player *has* to handle all the liquid.
         if(pc->is_player()) handle_liquid( liquid, avoid, radius ); // NEW
-        else handle_liquid(liquid, avoid, radius, nullptr, nullptr, -1, nullptr, pc, dest_opt); // NEW
+        else {
+            handle_liquid(liquid, avoid, radius, nullptr, nullptr, -1, nullptr, pc, dest_opt); // NEW
+        }
     }
 }
 

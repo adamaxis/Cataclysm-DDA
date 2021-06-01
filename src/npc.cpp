@@ -869,7 +869,7 @@ void npc::starting_weapon( const npc_class_id &type )
 // NEW
 bool npc::do_craft() {
     int batch_size;
-    const recipe* r = select_crafting_recipe(batch_size, *this);
+    const recipe* r = select_crafting_recipe(batch_size, this);
     if (r && crafting_allowed(*this->as_player(), (recipe &)*r)) {
         this->make_craft(r->ident(), batch_size);
         return true;
@@ -879,10 +879,10 @@ bool npc::do_craft() {
 
 // NEW
 bool npc::do_resume_craft() {
-    player& pc = *this->as_player();
-    item_location target = game_menus::inv::assemble(pc);
+    //player& pc = *this->as_player();
+    item_location target = game_menus::inv::assemble(*this);
     if (target && can_continue_craft(*target)) {
-        pc.add_msg_player_or_npc(
+        this->add_msg_player_or_npc(
             pgettext("in progress craft", "You start working on the %s."),
             pgettext("in progress craft", "<npcname> starts working on the %s."),
             target->tname());

@@ -59,7 +59,6 @@ class ret_val;
 template <typename T> struct enum_traits;
 
 struct liquid_dest_opt; // NEW
-Character& get_player_character(); // NEW
 
 namespace enchant_vals
 {
@@ -364,14 +363,15 @@ class item : public visitable
          */
         std::string tname( unsigned int quantity = 1, bool with_prefix = true,
                            unsigned int truncate = 0, bool with_contents = true,
-                           Character &player_character = get_player_character()) const; // NEW
+            Character* player_character = nullptr) const; // NEW
+
         std::string display_money( unsigned int quantity, unsigned int total,
                                    const cata::optional<unsigned int> &selected = cata::nullopt ) const;
         /**
          * Returns the item name and the charges or contained charges (if the item can have
          * charges at all). Calls @ref tname with given quantity and with_prefix being true.
          */
-        std::string display_name( unsigned int quantity = 1, Character &player_character=get_player_character()) const; // NEW
+        std::string display_name( unsigned int quantity = 1, Character *player_character=nullptr) const; // NEW
         /**
          * Return all the information about the item and its type.
          *

@@ -5,11 +5,12 @@
 #include <iosfwd>
 #include <vector>
 #include "character.h" // NEW
+#include "faction_camp.h"
 
 class JsonObject;
 class recipe;
 
-const recipe* select_crafting_recipe(int& batch_size_out, Character& p = get_player_character()); // NEW
+const recipe* select_crafting_recipe(int& batch_size_out, Character* p = nullptr); // NEW
 
 void load_recipe_category( const JsonObject &jsobj );
 void reset_recipe_categories();

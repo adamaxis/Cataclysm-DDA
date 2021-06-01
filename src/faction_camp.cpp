@@ -3754,6 +3754,15 @@ int camp_helpers::time_to_food( time_duration work ) // NEW
     return 2500 * to_minutes<int>(work) / 24 / 60; // NEW
 }
 
+int camp_helpers::get_cal_cost(const item_location& loc, const player& c) {
+    if (!loc || !&c) return -1;
+    auto& r = loc->get_making();
+    int percent_complete = loc->item_counter / 100000;
+    auto y = c.expected_time_to_craft(r, loc->charges, false) / 100;
+    y = (y * (100 - percent_complete)) / 100;
+    return y;
+}
+
 // mission support
 bool basecamp::distribute_food()
 {

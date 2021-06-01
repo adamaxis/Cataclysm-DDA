@@ -4660,9 +4660,11 @@ std::string item::dirt_symbol() const
     return dirt_symbol;
 }
 
-std::string item::tname( unsigned int quantity, bool with_prefix, unsigned int truncate,
-                         bool with_contents, Character &player_character) const // NEW
+std::string item::tname(unsigned int quantity, bool with_prefix,
+    unsigned int truncate, bool with_contents,
+    Character* player_character) const // NEW
 {
+    if (!player_character) player_character = &get_player_character(); // NEW
     // item damage and/or fouling level
     std::string damtext;
 
@@ -4766,10 +4768,10 @@ std::string item::tname( unsigned int quantity, bool with_prefix, unsigned int t
     // NEW Character &player_character = get_player_character();
     std::string tagtext;
     if( is_food() ) {
-        if( has_flag( flag_HIDDEN_POISON ) && player_character.get_skill_level( skill_survival ) >= 3 ) {
+        if( has_flag( flag_HIDDEN_POISON ) && player_character->get_skill_level( skill_survival ) >= 3 ) { // NEW
             tagtext += _( " (poisonous)" );
         } else if( has_flag( flag_HIDDEN_HALLU ) &&
-                   player_character.get_skill_level( skill_survival ) >= 5 ) {
+                   player_character->get_skill_level( skill_survival ) >= 5 ) { // NEW
             tagtext += _( " (hallucinogenic)" );
         }
     }
@@ -4802,7 +4804,7 @@ std::string item::tname( unsigned int quantity, bool with_prefix, unsigned int t
         }
     }
 
-    const sizing sizing_level = get_sizing( player_character );
+    const sizing sizing_level = get_sizing( *player_character ); // NEW
 
     if( sizing_level == sizing::human_sized_small_char ) {
         tagtext += _( " (too big)" );
@@ -4853,7 +4855,7 @@ std::string item::tname( unsigned int quantity, bool with_prefix, unsigned int t
     if( has_flag( flag_WET ) ) {
         tagtext += _( " (wet)" );
     }
-    if( already_used_by_player( player_character ) ) {
+    if( already_used_by_player( *player_character ) ) { // NEW
         tagtext += _( " (used)" );
     }
     if( active && ( has_flag( flag_WATER_EXTINGUISH ) || has_flag( flag_LITCIG ) ) ) {
@@ -4929,8 +4931,9 @@ std::string item::display_money( unsigned int quantity, unsigned int total,
     }
 }
 
-std::string item::display_name(unsigned int quantity, Character& player_character) const // NEW
+std::string item::display_name(unsigned int quantity, Character* player_character) const // NEW
 {
+    if (!player_character) player_character = &get_player_character(); // NEW
     std::string name = tname( quantity );
     std::string sidetxt;
     std::string amt;
@@ -4953,7 +4956,7 @@ std::string item::display_name(unsigned int quantity, Character& player_characte
     // We should handle infinite charges properly in all cases.
     if( is_book() && get_chapters() > 0 ) {
         // a book which has remaining unread chapters
-        amount = get_remaining_chapters( player_character );
+        amount = get_remaining_chapters( *player_character ); // NEW
     } else if( magazine_current() ) {
         show_amt = true;
         const item *mag = magazine_current();
@@ -5033,7 +5036,7 @@ std::string item::display_name(unsigned int quantity, Character& player_characte
     if( is_map() && calendar::turn != calendar::turn_zero ) {
         // TODO: fix point types
         tripoint map_pos_omt =
-            get_var( "reveal_map_center_omt", player_character.global_omt_location().raw() );
+            get_var( "reveal_map_center_omt", player_character->global_omt_location().raw() ); // NEW
         tripoint_abs_sm map_pos =
             project_to<coords::sm>( tripoint_abs_omt( map_pos_omt ) );
         const city *c = overmap_buffer.closest_city( map_pos ).city;
