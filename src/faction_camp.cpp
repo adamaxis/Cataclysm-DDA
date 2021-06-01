@@ -3750,8 +3750,8 @@ int camp_helpers::camp_food_supply( time_duration work )// NEW
 }
 
 int camp_helpers::time_to_food( time_duration work ) // NEW
-{
-    return 2500 * to_minutes<int>(work) / 24 / 60; // NEW
+{ // 35 seconds = 1 calorie
+    return 2500 * to_seconds<int>(work) / 24 / 60 / 60; // NEW
 }
 
 int camp_helpers::get_cal_cost(const item_location& loc, const player& c) {

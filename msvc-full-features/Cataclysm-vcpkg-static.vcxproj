@@ -30,7 +30,7 @@
   <PropertyGroup Label="Vcpkg">
     <VcpkgEnabled>true</VcpkgEnabled>
     <VcpkgEnableManifest>true</VcpkgEnableManifest>
-    <VcpkgManifestInstall>false</VcpkgManifestInstall>
+    <VcpkgManifestInstall>true</VcpkgManifestInstall>
     <VcpkgUseStatic>true</VcpkgUseStatic>
     <VcpkgAutoLink>true</VcpkgAutoLink>
     <VcpkgUserTriplet Condition="'$(Platform)'=='Win32'">x86-windows</VcpkgUserTriplet>
@@ -70,6 +70,9 @@
   <PropertyGroup Condition="'$(Configuration)'=='Release'">
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
+  <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <VcpkgInstalledDir>..\..\..\..\..\..\src\repos\vcpkg</VcpkgInstalledDir>
+  </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
       <PreprocessorDefinitions>_WINDOWS;USE_WINMAIN;TILES;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -103,6 +106,8 @@
   <ItemDefinitionGroup Condition="'$(Platform)'=='Win32'">
     <ClCompile>
       <PreprocessorDefinitions>WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+      </AdditionalOptions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>

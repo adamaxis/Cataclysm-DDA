@@ -1806,7 +1806,8 @@ void craft_activity_actor::do_turn( player_activity &act, Character &crafter )
         const time_duration pct_time = time_duration::from_seconds( base_total_moves / 2000 );
         crafter.craft_proficiency_gain( craft, pct_time * five_percent_steps );
         if (!crafter.is_player()) { // NEW
-            auto cal_time = time_duration::from_moves(base_total_moves * (double)five_percent_steps / 20); // 40 seconds = ~1 calorie opportunity cost
+            auto cal_time = time_duration::from_moves(base_total_moves * five_percent_steps / 20);
+            cal_time += (five_percent_steps*35_seconds); // 35 seconds = ~1 calorie opportunity cost
             crafter.craft_npc_calorie_consume(cal_time);
         }
     }
