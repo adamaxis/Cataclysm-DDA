@@ -1346,6 +1346,11 @@ void inventory_selector::add_item( inventory_column &target_column,
                                    item_location &&location,
                                    const item_category *custom_category )
 {
+    for (auto& av : avoid) {
+        if (&(*location) == &(*av)) {
+            return; // ignore children
+        }
+    }
     add_entry( target_column,
                std::vector<item_location>( 1, location ),
                custom_category );
@@ -1357,15 +1362,24 @@ void inventory_selector::add_item( inventory_column &target_column,
 void inventory_selector::add_items( inventory_column &target_column,
                                     const std::function<item_location( item * )> &locator,
                                     const std::vector<std::list<item *>> &stacks,
-                                    const item_category *custom_category )
+                                    const item_category *custom_category)
 {
     const item_category *nat_category = nullptr;
 
     for( const auto &elem : stacks ) {
         std::vector<item_location> locations;
         std::transform( elem.begin(), elem.end(), std::back_inserter( locations ), locator );
-        item_location const &loc = locations.front();
-
+        item_location &loc = locations.front();
+        for (auto& av : avoid) {
+            if (&(*loc) == &(*av)) {
+                locations.erase(locations.begin());
+                if (locations.empty()) {
+                    break;
+                }
+                loc = locations.front();
+            }
+        }
+        if (locations.empty()) continue;
         if( custom_category == nullptr ) {
             nat_category = &loc->get_category_of_contents();
         } else if( nat_category == nullptr && preset.is_shown( loc ) ) {
@@ -1378,11 +1392,11 @@ void inventory_selector::add_items( inventory_column &target_column,
 
 void inventory_selector::add_contained_items( item_location &container )
 {
-    add_contained_items( container, own_inv_column );
+    add_contained_items( container, own_inv_column, nullptr);
 }
 
 void inventory_selector::add_contained_items( item_location &container, inventory_column &column,
-        const item_category *const custom_category )
+        const item_category *const custom_category)
 {
     if( container->has_flag( STATIC( flag_id( "NO_UNLOAD" ) ) ) ) {
         return;
@@ -1390,7 +1404,7 @@ void inventory_selector::add_contained_items( item_location &container, inventor
 
     for( item *it : container->contents.all_items_top() ) {
         item_location child( container, it );
-        add_contained_items( child, column, custom_category );
+        add_contained_items( child, column, custom_category);
         const item_category *nat_category = nullptr;
         if( custom_category == nullptr ) {
             nat_category = &child->get_category_of_contents();
@@ -1403,7 +1417,7 @@ void inventory_selector::add_contained_items( item_location &container, inventor
 
 void inventory_selector::add_character_items( Character &character )
 {
-    character.visit_items( [ this, &character ]( item * it, item * ) {
+    character.visit_items( [ this, &character]( item * it, item * ) {
         if( it == &character.weapon ) {
             add_item( own_gear_column, item_location( character, it ),
                       &item_category_id( "WEAPON_HELD" ).obj() );
@@ -1418,11 +1432,11 @@ void inventory_selector::add_character_items( Character &character )
         add_items( own_inv_column, [&character]( item * it ) {
             return item_location( character, it );
         }, restack_items( ( *elem ).begin(), ( *elem ).end(), preset.get_checking_components() ),
-        &item_category_id( "ITEMS_WORN" ).obj() );
+        &item_category_id( "ITEMS_WORN" ).obj());
         for( item &it_elem : *elem ) {
             item_location parent( character, &it_elem );
             add_contained_items( parent, own_inv_column,
-                                 &item_category_id( "ITEMS_WORN" ).obj() );
+                                 &item_category_id( "ITEMS_WORN" ).obj());
         }
     }
     // this is a little trick; we want the default behavior for contained items to be in own_inv_column
@@ -1963,7 +1977,9 @@ void inventory_selector::draw_footer( const catacurses::window &w ) const
     }
 }
 
-inventory_selector::inventory_selector( Character &u, const inventory_selector_preset &preset )
+inventory_selector::inventory_selector(Character& u,
+    const inventory_selector_preset& preset,
+    const std::vector<item_location>& avoid)
     : u( u )
     , preset( preset )
     , ctxt( "INVENTORY", keyboard_mode::keychar )
@@ -1972,6 +1988,7 @@ inventory_selector::inventory_selector( Character &u, const inventory_selector_p
     , own_inv_column( preset )
     , own_gear_column( preset )
     , map_column( preset )
+    , avoid( avoid )
 {
     ctxt.register_action( "DOWN", to_translation( "Next item" ) );
     ctxt.register_action( "UP", to_translation( "Previous item" ) );

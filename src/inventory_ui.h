@@ -489,14 +489,15 @@ class selection_column : public inventory_column
 class inventory_selector
 {
     public:
-        explicit inventory_selector( Character &u,
-                                     const inventory_selector_preset &preset = default_preset );
+        explicit inventory_selector(Character& u,
+            const inventory_selector_preset& preset = default_preset, 
+            const std::vector<item_location>& avoid = std::vector<item_location>());
         virtual ~inventory_selector();
         /** These functions add items from map / vehicles. */
         void add_contained_items( item_location &container );
         void add_contained_items( item_location &container, inventory_column &column,
                                   const item_category *custom_category = nullptr );
-        void add_character_items( Character &character );
+        void add_character_items(Character& character );
         void add_map_items( const tripoint &target );
         void add_vehicle_items( const tripoint &target );
         void add_nearby_items( int radius = 1 );
@@ -508,7 +509,7 @@ class inventory_selector
         }
         /** Assigns a hint. */
         void set_hint( const std::string &hint ) {
-            this->hint = hint;
+            this->hint = hint; 
         }
         /** Specify whether the header should show stats (weight and volume). */
         void set_display_stats( bool display_stats ) {
@@ -531,7 +532,7 @@ class inventory_selector
     protected:
         Character &u;
         const inventory_selector_preset &preset;
-
+        const std::vector<item_location>& avoid;
         /**
          * The input context for navigation, already contains some actions for movement.
          */
@@ -653,7 +654,6 @@ class inventory_selector
 
         void toggle_categorize_contained();
         void set_active_column( size_t index );
-
     protected:
         size_t get_columns_width( const std::vector<inventory_column *> &columns ) const;
         /** @return Percentage of the window occupied by columns */
@@ -720,8 +720,9 @@ class inventory_pick_selector : public inventory_selector
 {
     public:
         explicit inventory_pick_selector( Character &p,
-                                          const inventory_selector_preset &preset = default_preset ) :
-            inventory_selector( p, preset ) {}
+                                          const inventory_selector_preset &preset = default_preset, 
+                                          const std::vector<item_location>& avoid = std::vector<item_location>()) :
+            inventory_selector( p, preset, avoid) {}
 
         item_location execute();
 };

@@ -5740,6 +5740,7 @@ bool game::npc_menu( npc &who )
         sort_armor,
         craft_item, // NEW
         resume_craft, // NEW
+        cancel_activity, // NEW
         attack,
         disarm,
         steal
@@ -5757,8 +5758,12 @@ bool game::npc_menu( npc &who )
     amenu.addentry( examine_wounds, true, 'w', _( "Examine wounds" ) );
     amenu.addentry( use_item, true, 'i', _( "Use item on" ) );
     amenu.addentry( sort_armor, true, 'r', _( "Sort armor" ) );
-    amenu.addentry( craft_item, obeys && who.is_following(), 'c', _("Craft item")); // NEW
-    amenu.addentry( resume_craft, obeys && who.is_following(), 'b', _("Resume craft")); // NEW
+    if ( !who.has_player_activity() ) {
+        amenu.addentry(craft_item, obeys && who.is_following(), 'c', _("Craft item")); // NEW
+        amenu.addentry(resume_craft, obeys && who.is_following(), 'b', _("Resume craft")); // NEW
+    } else {
+        amenu.addentry(cancel_activity, obeys, 'c', _("Cancel activity")); // NEW
+    }
     amenu.addentry( attack, true, 'a', _( "Attack" ) );
     if( !who.is_player_ally() ) {
         amenu.addentry( disarm, who.is_armed(), 'd', _( "Disarm" ) );
@@ -5838,6 +5843,10 @@ bool game::npc_menu( npc &who )
         who.do_craft();
     } else if (choice == resume_craft) { // NEW
         who.do_resume_craft();
+    } else if (choice == cancel_activity) { // NEW
+        if (query_yn(string_format(_("Currently, %s is %s. Cancel activity?"), who.get_name(), who.activity.get_verb()))) {
+            who.revert_after_activity();
+        }
     } else if( choice == attack ) {
         if( who.is_enemy() || query_yn( _( "You may be attacked!  Proceed?" ) ) ) {
             u.melee_attack( who, true );

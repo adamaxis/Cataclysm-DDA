@@ -438,9 +438,89 @@ static int count_charges_in_list( const itype *type, const map_stack &items )
     return 0;
 }
 
+std::vector<item_location> inventory::form_from_mapX(const tripoint& origin, int range, const Character* pl,
+    bool assign_invlet,
+    bool clear_path,
+    const std::function<bool(const item_location&)> &filter) {
+        std::vector<item_location> inv;
+        map &m = get_map();
+        // populate a grid of spots that can be reached
+        std::vector<tripoint> pts = {};
+        // If we need a clear path we care about the reachability of points
+        if (clear_path) {
+            m.reachable_flood_steps(pts, origin, range, 1, 100);
+        }
+        else {
+            // Fill reachable points with points_in_radius
+            tripoint_range<tripoint> in_radius = m.points_in_radius(origin, range);
+            for (const tripoint& p : in_radius) {
+                pts.emplace_back(p);
+            }
+        }
+
+        // pt2
+        auto i_add = [](item& i, Character &pc) {
+
+        };
+        //
+
+        for (const tripoint& p : pts) {
+            for (auto &pi : m.i_at(p)) {
+                if (pl && !pi.is_owned_by(*pl, true)) {
+                    continue;
+                }
+                if (m.accessible_items(p)) {
+                    item_location il(item_location(map_cursor{ p }, &pi));
+                    if(filter(il)) inv.push_back(il);
+                }
+            }
+            // Handle any water from infinite map sources.
+            item water = m.water_from(p);
+            if (!water.is_null()) {
+                item_location il(item_location(map_cursor{ p }, &water));
+                if (filter(il)) inv.push_back(il);
+            }
+            // kludge that can probably be done better to check specifically for toilet water to use in
+            // crafting
+            if (m.furn(p)->has_examine(iexamine::toilet)) {
+                // get water charges at location
+                map_stack toilet = m.i_at(p);
+                auto water = toilet.end();
+                for (auto candidate = toilet.begin(); candidate != toilet.end(); ++candidate) {
+                    if (candidate->typeId() == itype_water) {
+                        water = candidate;
+                        break;
+                    }
+                }
+                if (water != toilet.end() && water->charges > 0) {
+                    item_location il(item_location(map_cursor{ p }, &(*water)));
+                    if (filter(il)) inv.push_back(il);
+                }
+            }
+
+            // keg-kludge
+            if (m.furn(p)->has_examine(iexamine::keg)) {
+                map_stack liq_contained = m.i_at(p);
+                for (auto& i : liq_contained) {
+                    if (i.made_of(phase_id::LIQUID)) {
+                        item_location il(item_location(map_cursor{ p }, &i));
+                        if (filter(il)) inv.push_back(il);
+                    }
+                }
+            }
+
+            // form from vehicle
+            if (optional_vpart_position vp = m.veh_at(p)) {
+                //vp->form_inventory(*this);
+            }
+        }
+        pts.clear();
+        return inv;
+}
+
 void inventory::form_from_map( const tripoint &origin, int range, const Character *pl,
                                bool assign_invlet,
-                               bool clear_path )
+                               bool clear_path)
 {
     form_from_map( get_map(), origin, range, pl, assign_invlet, clear_path );
 }

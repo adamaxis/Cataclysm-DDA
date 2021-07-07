@@ -86,8 +86,8 @@ bool compare_items( const item &first, const item &second,
  * @return A list of pairs of item_location, quantity.
  */
 drop_locations multidrop( player &p );
-/** Item assembly menu. */
-item_location assemble(player &p); // NEW
+/** NPC item assembly menu. */
+item_location assemble(player &p);
 /** Consuming an item. */
 item_location consume( player &p );
 /** Consuming a food item via a custom menu. */
@@ -98,10 +98,10 @@ item_location consume_drink( player &p );
 item_location consume_meds( player &p );
 /** Choosing a container for liquid. */
 item_location container_for( Character &you, const item &liquid, int radius = 0,
-                             const item *avoid = nullptr );
+                             const item_location &avoid = item_location());
 /** Choosing a container for liquid. */
 item_location container_for(Character& you, const item& liquid, int radius = 0,
-    std::vector<const item*> avoid = std::vector<const item*>());
+    const std::vector<item_location> &avoid = std::vector<item_location>());
 /** Item disassembling menu. */
 item_location disassemble( Character &p );
 /** Gunmod installation menu. */

@@ -124,9 +124,10 @@ static item_location_filter convert_filter( const item_filter &filter )
 static item_location inv_internal( Character &u, const inventory_selector_preset &preset,
                                    const std::string &title, int radius,
                                    const std::string &none_message,
-                                   const std::string &hint = std::string() )
+                                   const std::string &hint = std::string(),
+                                   const std::vector<item_location>& avoid = std::vector<item_location>())
 {
-    inventory_pick_selector inv_s( u, preset );
+    inventory_pick_selector inv_s( u, preset, avoid );
 
     inv_s.set_title( title );
     inv_s.set_hint( hint );
@@ -406,7 +407,7 @@ class liquid_inventory_selector_preset : public inventory_selector_preset
 {
     public:
         explicit liquid_inventory_selector_preset( const item &liquid,
-            std::vector<const item*> avoid) : liquid( liquid ), avoid( avoid ) {
+            const item * avoid) : liquid( liquid ), avoid( avoid ) {
 
             append_cell( []( const item_location & loc ) {
                 if( loc.get_item() ) {
@@ -418,9 +419,7 @@ class liquid_inventory_selector_preset : public inventory_selector_preset
         }
 
         bool is_shown( const item_location &location ) const override {
-            for (auto& av : avoid) {
-                if (location.get_item() == av) return false;
-            }
+            if (avoid == &(*location)) return false;
 
             if( location.where() == item_location::type::character ) {
                 Character *character = g->critter_at<Character>( location.position() );
@@ -436,22 +435,24 @@ class liquid_inventory_selector_preset : public inventory_selector_preset
 
     private:
         const item &liquid;
-        std::vector<const item*> avoid;
+        const item* avoid;
 };
-// NEW
-item_location game_menus::inv::container_for(Character& you, const item& liquid, int radius,
-    const item* const avoid) {
-    return container_for(you, liquid, radius, std::vector<const item*>{avoid});
-}
+
 // NEW
 item_location game_menus::inv::container_for( Character &you, const item &liquid, int radius,
-        std::vector<const item *> avoid )
+        const std::vector<item_location> &avoid)
 {
-    return inv_internal(you, liquid_inventory_selector_preset(liquid, avoid),
+    return inv_internal(you, liquid_inventory_selector_preset(liquid, nullptr),
                          string_format( _( "Container for %s | %s %s" ), liquid.display_name( liquid.charges ),
                                         format_volume( liquid.volume() ), volume_units_abbr() ), radius,
                          string_format( _( "You don't have a suitable container for carrying %s." ),
-                                        liquid.tname() ) );
+                                        liquid.tname() ), "", avoid);
+}
+
+// NEW
+item_location game_menus::inv::container_for(Character& you, const item& liquid, int radius,
+    const item_location &avoid) {
+    return container_for(you, liquid, radius, std::vector<item_location>{ avoid });
 }
 
 class pickup_inventory_preset : public inventory_selector_preset
@@ -549,15 +550,16 @@ class assemble_inventory_preset : public inventory_selector_preset
 {
 public:
     explicit assemble_inventory_preset(const player& p, const inventory &inv) : inventory_selector_preset(), p(p), inv(inv) {
-        const std::string unknown = _("<color_dark_gray>?</color>");
         faction* pc = get_player_character().get_faction();
         int kcal = pc->food_supply;
-        append_cell([this, &p, unknown, kcal, pc](const item_location& loc) -> std::string {
-            return string_format(_("<color_cyan>%s</color>"), to_string(time_duration::from_turns(camp_helpers::get_cal_cost(loc, p))));
+        append_cell([this, &p, kcal, pc](const item_location& loc) -> std::string {
+            return string_format(_("<color_cyan>%s</color>"), to_string(time_duration::from_turns(p.expected_time_to_craft(loc))));
             }, _("TIME TO CRAFT"));
 
-        append_cell([this, &p, unknown, kcal, pc](const item_location& loc) -> std::string {
-            return string_format(_("<color_cyan>%d</color>"), camp_helpers::time_to_food(time_duration::from_turns(camp_helpers::get_cal_cost(loc, p))));
+        append_cell([this, &p, kcal, pc](const item_location& loc) -> std::string {
+            auto cost = camp_helpers::get_craft_cost(loc, p);
+            if(cost > camp_helpers::camp_food_supply()) return string_format(_("<color_red>%d!</color>"), cost);
+            return string_format(_("<color_cyan>%d</color>"), cost);
             //if (must_feed && camp_food_supply() < time_to_food(duration)) {
             }, string_format(_("CALORIE COST (CAMP KCAL : %d)"), kcal));
 
@@ -571,9 +573,9 @@ public:
         if (p.has_recipe(&loc->get_making(), inv, p.get_crafting_helpers()) == -1) {
             return string_format(_("%s doesn't know the recipe for this"), p.get_name());
         }
-        if (camp_helpers::camp_food_supply() < camp_helpers::get_cal_cost(loc, *p.as_player())) {
-            return string_format(_("You don't have enough camp food to feed %s for this job"), p.get_name());
-        }
+        //if (camp_helpers::camp_food_supply() < camp_helpers::get_craft_cost(loc, *p.as_player())) {
+        //    return string_format(_("You don't have enough camp food to feed %s for this job"), p.get_name());
+        //}
         return inventory_selector_preset::get_denial(loc);
     }
 

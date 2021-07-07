@@ -119,6 +119,7 @@ bool get_liquid_target(item& liquid, const item* const source, const int radius,
     const vehicle* const source_veh,
     const monster* const source_mon,
     liquid_dest_opt& target,
+    const std::vector<item_location> &avoid = std::vector<item_location>(),
     Character* player_character=nullptr);
 
 } // namespace liquid_handler
