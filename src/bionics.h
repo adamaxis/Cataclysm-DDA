@@ -33,12 +33,16 @@ struct bionic_data {
 
     translation name;
     translation description;
+
+    cata::optional<translation> cant_remove_reason;
     /** Power cost on activation */
     units::energy power_activate = 0_kJ;
     /** Power cost on deactivation */
     units::energy power_deactivate = 0_kJ;
     /** Power cost over time, does nothing without a non-zero charge_time */
     units::energy power_over_time = 0_kJ;
+    /** Power cost when the bionic's special effect is triggered */
+    units::energy power_trigger = 0_kJ;
     /** How often a bionic draws or produces power while active in turns */
     int charge_time = 0;
     /** Power bank size **/
@@ -113,6 +117,10 @@ struct bionic_data {
      * E.g. enhanced optic bionic may cancel HYPEROPIC trait.
      */
     std::vector<trait_id> canceled_mutations;
+    /**
+     * Mutations/traits that prevent installing this CBM
+     */
+    std::set<trait_id> mutation_conflicts;
 
     /**
      * The spells you learn when you install this bionic, and what level you learn them at.
