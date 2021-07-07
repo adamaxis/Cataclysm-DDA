@@ -133,14 +133,20 @@ class inventory : public visitable
         void restack( Character &p );
         void form_from_zone( map &m, std::unordered_set<tripoint> &zone_pts, const Character *pl = nullptr,
                              bool assign_invlet = true );
+
+        static std::vector<item_location> form_from_mapX(const tripoint& origin, int range, const Character* pl,
+            bool assign_invlet,
+            bool clear_path,
+            const std::function<bool(const item_location&)>& filter = [](const item_location& it) -> bool { return true; });
+
         void form_from_map( const tripoint &origin, int range, const Character *pl = nullptr,
                             bool assign_invlet = true,
-                            bool clear_path = true );
+                            bool clear_path = true);
         void form_from_map( map &m, const tripoint &origin, int range, const Character *pl = nullptr,
                             bool assign_invlet = true,
-                            bool clear_path = true );
+                            bool clear_path = true);
         void form_from_map( map &m, std::vector<tripoint> pts, const Character *pl,
-                            bool assign_invlet = true );
+                            bool assign_invlet = true);
         /**
          * Remove a specific item from the inventory. The item is compared
          * by pointer. Contents of the item are removed as well.

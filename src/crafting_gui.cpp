@@ -66,7 +66,7 @@ static void draw_recipe_subtabs( const catacurses::window &w, const std::string 
                                  const std::string &subtab,
                                  const recipe_subset &available_recipes, TAB_MODE mode = NORMAL );
 
-static std::string peek_related_recipe( const recipe *current, const recipe_subset &available, Character &player_character=get_player_character()); // NEW
+static std::string peek_related_recipe( const recipe *current, const recipe_subset &available, Character *player_character=nullptr); // NEW
 static int related_menu_fill( uilist &rmenu,
                               const std::vector<std::pair<itype_id, std::string>> &related_recipes,
                               const recipe_subset &available );
@@ -136,27 +136,28 @@ void reset_recipe_categories()
 namespace
 {
 struct availability {
-    explicit availability( const recipe *r, int batch_size = 1, Character &player = get_player_character()) { // NEW
-        // NEW Character &player = get_player_character();
-        const inventory &inv = player.crafting_inventory();
+    explicit availability( const recipe *r, int batch_size = 1, Character *player = nullptr) { // NEW
+        if (!player) player = &get_player_character();
+        const inventory &inv = player->crafting_inventory();
         auto all_items_filter = r->get_component_filter( recipe_filter_flags::none );
         auto no_rotten_filter = r->get_component_filter( recipe_filter_flags::no_rotten );
         const deduped_requirement_data &req = r->deduped_requirements();
-        has_proficiencies = r->character_has_required_proficiencies( player );
+        has_proficiencies = r->character_has_required_proficiencies( *player );
         can_craft = req.can_make_with_inventory(
                         inv, all_items_filter, batch_size, craft_flags::start_only ) && has_proficiencies;
         can_craft_non_rotten = req.can_make_with_inventory(
                                    inv, no_rotten_filter, batch_size, craft_flags::start_only );
-        has_food = (player.is_player() ? true :(camp_helpers::camp_food_supply() > camp_helpers::time_to_food(time_duration::from_turns(player.expected_time_to_craft(*r, batch_size, false))))); // NEW
+        has_food = (player->is_player() ? true : 
+            (camp_helpers::camp_food_supply() > camp_helpers::time_to_food(time_duration::from_turns(player->expected_time_to_craft(*r, batch_size, false))))); // NEW
         const requirement_data &simple_req = r->simple_requirements();
         apparently_craftable = simple_req.can_make_with_inventory(
                                    inv, all_items_filter, batch_size, craft_flags::start_only );
-        proficiency_time_maluses = r->proficiency_time_maluses( player );
-        proficiency_failure_maluses = r->proficiency_failure_maluses( player );
+        proficiency_time_maluses = r->proficiency_time_maluses( *player );
+        proficiency_failure_maluses = r->proficiency_failure_maluses( *player );
         has_all_skills = r->skill_used.is_null() ||
-                         player.get_skill_level( r->skill_used ) >= r->difficulty;
+                         player->get_skill_level( r->skill_used ) >= r->difficulty;
         for( const std::pair<const skill_id, int> &e : r->required_skills ) {
-            if( player.get_skill_level( e.first ) < e.second ) {
+            if( player->get_skill_level( e.first ) < e.second ) {
                 has_all_skills = false;
                 break;
             }
@@ -511,7 +512,6 @@ const recipe *select_crafting_recipe( int &batch_size_out, Character *player_cha
     const recipe *chosen = nullptr;
     
     if (!player_character) player_character = &get_player_character(); // NEW
-    // NEW Character &player_character = p;
     const inventory &crafting_inv = player_character->crafting_inventory(); // NEW
     const std::vector<npc *> helpers = player_character->get_crafting_helpers(); // NEW
     std::string filterstring;
@@ -829,7 +829,7 @@ const recipe *select_crafting_recipe( int &batch_size_out, Character *player_cha
                 // cache recipe availability on first display
                 for( const recipe *e : current ) {
                     if( !availability_cache.count( e ) ) {
-                        availability_cache.emplace( e, availability( e, 1, *player_character ) ); // NEW
+                        availability_cache.emplace( e, availability( e, 1, player_character ) ); // NEW
                     }
                 }
 
@@ -1097,8 +1097,9 @@ const recipe *select_crafting_recipe( int &batch_size_out, Character *player_cha
     return chosen;
 }
 
-std::string peek_related_recipe( const recipe *current, const recipe_subset &available, Character& player_character)
+std::string peek_related_recipe( const recipe *current, const recipe_subset &available, Character* player_character)
 {
+    if (!player_character) player_character = &get_player_character();
     auto compare_second =
         []( const std::pair<itype_id, std::string> &a,
     const std::pair<itype_id, std::string> &b ) {
@@ -1120,7 +1121,7 @@ std::string peek_related_recipe( const recipe *current, const recipe_subset &ava
     // use this item
     const itype_id tid = tmp.typeId();
     const std::set<const recipe *> &known_recipes =
-        get_player_character().get_learned_recipes().of_component( tid );
+        player_character->get_learned_recipes().of_component( tid );
     for( const auto &b : known_recipes ) {
         if( available.contains( b ) ) {
             related_results.emplace_back( b->result(), b->result_name() );
@@ -1239,7 +1240,6 @@ static void draw_camp_calorie_amount(const catacurses::window& w) // NEW
 static void draw_can_craft_indicator( const catacurses::window &w, const recipe &rec, Character *player_character) // NEW
 {
     if (!player_character) player_character = &get_player_character(); // NEW
-    // NEW Character &player_character = get_player_character();
     // Draw text
     if( player_character->lighting_craft_speed_multiplier( rec ) <= 0.0f ) { // NEW
         right_print( w, 0, 1, i_red, _( "too dark to craft" ) );

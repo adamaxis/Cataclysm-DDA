@@ -29,6 +29,7 @@
 #include "enums.h"
 #include "event.h"
 #include "event_bus.h"
+#include "faction_camp.h"
 #include "flag.h"
 #include "game.h"
 #include "game_constants.h"
@@ -1876,9 +1877,10 @@ void craft_activity_actor::do_turn( player_activity &act, Character &crafter )
         // Divide by 100 for seconds, 20 for 5%
         const time_duration pct_time = time_duration::from_seconds( base_total_moves / 2000 );
         crafter.craft_proficiency_gain( craft, pct_time * five_percent_steps );
-        if (!crafter.is_player()) { // NEW
-            auto cal_time = time_duration::from_moves(base_total_moves * (double)five_percent_steps / 20); // 40 seconds = ~1 calorie opportunity cost
-            crafter.craft_npc_calorie_consume(cal_time);
+        if (!crafter.is_player()) { // NPC kcal calculation
+            for (int x = 0; x < five_percent_steps; x++) {
+                crafter.craft_npc_calorie_consume(time_duration::from_moves(base_total_moves / 20) + 1_calories); // cost + 100/5 kcal
+            }
         }
         // Invalidate the crafting time cache because proficiencies may have changed
         cached_crafting_speed = 0;

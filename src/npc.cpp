@@ -884,7 +884,7 @@ void npc::starting_weapon( const npc_class_id &type )
 bool npc::do_craft() {
     int batch_size;
     const recipe* r = select_crafting_recipe(batch_size, this);
-    if (r && crafting_allowed(*this->as_player(), (recipe &)*r)) {
+    if (r && crafting_allowed(*this, *r)) {
         this->make_craft(r->ident(), batch_size);
         return true;
     }
@@ -893,7 +893,6 @@ bool npc::do_craft() {
 
 // NEW
 bool npc::do_resume_craft() {
-    //player& pc = *this->as_player();
     item_location target = game_menus::inv::assemble(*this);
     if (target && can_continue_craft(*target)) {
         this->add_msg_player_or_npc(
@@ -902,7 +901,7 @@ bool npc::do_resume_craft() {
             target->tname());
         this->assign_activity(player_activity(craft_activity_actor(target, false)));
         return true;
-    } else this->say("I can't do that.");
+    } else this->say("Uh, ok.");
     return false;
 }
 
@@ -3304,6 +3303,7 @@ void npc::set_attitude( npc_attitude new_attitude )
 
 npc_follower_rules::npc_follower_rules()
 {
+    // TAG
     engagement = combat_engagement::CLOSE;
     aim = aim_rule::WHEN_CONVENIENT;
     overrides = ally_rule::DEFAULT;

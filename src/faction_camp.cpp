@@ -79,8 +79,6 @@
 #include "weather.h"
 #include "weighted_list.h"
 
-using namespace camp_helpers; // NEW
-
 class character_id;
 
 static const activity_id ACT_MOVE_LOOT( "ACT_MOVE_LOOT" );
@@ -1293,7 +1291,7 @@ void basecamp::get_available_missions( mission_data &mission_key )
                                   "> Rots in < 2 days: 60%%\n"
                                   "> Rots in < 5 days: 80%%\n\n"
                                   "Total faction food stock: %d kcal\nor %d day's rations" ),
-                               camp_food_supply(), camp_food_supply( 0, true ) );
+            camp_helpers::camp_food_supply(), camp_helpers::camp_food_supply( 0, true ) );
         mission_key.add( "Distribute Food", _( "Distribute Food" ), entry );
         validate_assignees();
         entry = string_format( _( "Notes:\n"
@@ -1557,7 +1555,7 @@ npc_ptr basecamp::start_mission( const std::string &miss_id, time_duration durat
                                  const std::vector<item *> &equipment,
                                  const std::map<skill_id, int> &required_skills )
 {
-    if( must_feed && camp_food_supply() < time_to_food( duration ) ) {
+    if( must_feed && camp_helpers::camp_food_supply() < camp_helpers::time_to_food( duration ) ) {
         popup( _( "You don't have enough food stored to feed your companion." ) );
         return nullptr;
     }
@@ -1566,7 +1564,7 @@ npc_ptr basecamp::start_mission( const std::string &miss_id, time_duration durat
     if( comp != nullptr ) {
         comp->companion_mission_time_ret = calendar::turn + duration;
         if( must_feed ) {
-            camp_food_supply( duration );
+            camp_helpers::camp_food_supply( duration );
         }
     }
     return comp;
@@ -1893,7 +1891,7 @@ void basecamp::job_assignment_ui()
 
 void basecamp::start_menial_labor()
 {
-    if( camp_food_supply() < time_to_food( 3_hours ) ) {
+    if(camp_helpers::camp_food_supply() < camp_helpers::time_to_food( 3_hours ) ) {
         popup( _( "You don't have enough food stored to feed your companion." ) );
         return;
     }
@@ -1926,7 +1924,7 @@ void basecamp::start_cut_logs()
                                     2, haul_items );
         time_duration work_time = travel_time + chop_time;
         if( !query_yn( _( "Trip Estimate:\n%s" ), camp_trip_description( work_time,
-                       chop_time, travel_time, dist, 2, time_to_food( work_time ) ) ) ) {
+                       chop_time, travel_time, dist, 2, camp_helpers::time_to_food( work_time ) ) ) ) {
             return;
         }
 
@@ -1971,7 +1969,7 @@ void basecamp::start_clearcut()
         time_duration travel_time = companion_travel_time_calc( forest, omt_pos, 0_minutes, 2 );
         time_duration work_time = travel_time + chop_time;
         if( !query_yn( _( "Trip Estimate:\n%s" ), camp_trip_description( work_time,
-                       chop_time, travel_time, dist, 2, time_to_food( work_time ) ) ) ) {
+                       chop_time, travel_time, dist, 2, camp_helpers::time_to_food( work_time ) ) ) ) {
             return;
         }
 
@@ -2014,7 +2012,7 @@ void basecamp::start_setup_hide_site()
                                         2, haulage );
             time_duration work_time = travel_time + build_time;
             if( !query_yn( _( "Trip Estimate:\n%s" ), camp_trip_description( work_time,
-                           build_time, travel_time, dist, trips, time_to_food( work_time ) ) ) ) {
+                           build_time, travel_time, dist, trips, camp_helpers::time_to_food( work_time ) ) ) ) {
                 return;
             }
             npc_ptr comp = start_mission( "_faction_camp_hide_site", work_time, true,
@@ -2074,7 +2072,7 @@ void basecamp::start_relay_hide_site()
                                         trips, haulage );
             time_duration work_time = travel_time + build_time;
             if( !query_yn( _( "Trip Estimate:\n%s" ), camp_trip_description( work_time, build_time,
-                           travel_time, dist, trips, time_to_food( work_time ) ) ) ) {
+                           travel_time, dist, trips, camp_helpers::time_to_food( work_time ) ) ) ) {
                 return;
             }
 
@@ -2168,7 +2166,7 @@ void basecamp::start_fortifications( std::string &bldg_exp )
             travel_time += companion_travel_time_calc( fort_om, omt_pos, 0_minutes, 2 );
         }
         time_duration total_time = base_camps::to_workdays( travel_time + build_time );
-        int need_food = time_to_food( total_time );
+        int need_food = camp_helpers::time_to_food( total_time );
         if( !query_yn( _( "Trip Estimate:\n%s" ), camp_trip_description( total_time, build_time,
                        travel_time, dist, trips, need_food ) ) ) {
             return;
@@ -2210,7 +2208,7 @@ void basecamp::start_combat_mission( const std::string &miss )
     int trips = 2;
     time_duration travel_time = companion_travel_time_calc( scout_points, 0_minutes, trips );
     if( !query_yn( _( "Trip Estimate:\n%s" ), camp_trip_description( 0_hours, 0_hours,
-                   travel_time, dist, trips, time_to_food( travel_time ) ) ) ) {
+                   travel_time, dist, trips, camp_helpers::time_to_food( travel_time ) ) ) ) {
         return;
     }
     npc_ptr comp = start_mission( miss, travel_time, true, _( "departs on patrol…" ),
@@ -2482,11 +2480,11 @@ void basecamp::finish_return( npc &comp, const bool fixed_time, const std::strin
 
     // companions subtracted food when they started the mission, but didn't mod their hunger for
     // that food.  so add it back in.
-    int need_food = time_to_food( mission_time - reserve_time );
-    if( camp_food_supply() < need_food ) {
+    int need_food = camp_helpers::time_to_food( mission_time - reserve_time );
+    if(camp_helpers::camp_food_supply() < need_food ) {
         popup( _( "Your companion seems disappointed that your pantry is empty…" ) );
     }
-    int avail_food = std::min( need_food, camp_food_supply() ) + time_to_food( reserve_time );
+    int avail_food = std::min( need_food, camp_helpers::camp_food_supply() ) + camp_helpers::time_to_food( reserve_time );
     // movng all the logic from talk_function::companion return here instead of polluting
     // mission_companion
     comp.reset_companion_mission();
@@ -2507,7 +2505,7 @@ void basecamp::finish_return( npc &comp, const bool fixed_time, const std::strin
     g->reload_npcs();
     validate_assignees();
 
-    camp_food_supply( -need_food );
+    camp_helpers::camp_food_supply( -need_food );
     comp.mod_hunger( -avail_food );
     comp.mod_stored_kcal( avail_food );
     if( has_water() ) {
@@ -2774,7 +2772,7 @@ void basecamp::recruit_return( const std::string &task, int score )
         description += _( "Asking for:\n" );
         description += string_format( _( "> Food:     %10d days\n\n" ), food_desire );
         description += string_format( _( "Faction Food:%9d days\n\n" ),
-                                      camp_food_supply( 0, true ) );
+                                        camp_helpers::camp_food_supply( 0, true ) );
         description += string_format( _( "Recruit Chance: %10d%%\n\n" ),
                                       std::min( 100 * ( 10 + appeal ) / 20, 100 ) );
         description += _( "Select an option:" );
@@ -2791,7 +2789,7 @@ void basecamp::recruit_return( const std::string &task, int score )
             return;
         }
 
-        if( rec_m == 0 && food_desire + 1 <= camp_food_supply( 0, true ) ) {
+        if( rec_m == 0 && food_desire + 1 <= camp_helpers::camp_food_supply( 0, true ) ) {
             food_desire++;
             appeal++;
         }
@@ -2814,7 +2812,7 @@ void basecamp::recruit_return( const std::string &task, int score )
         return;
     }
     // Time durations always subtract from camp food supply
-    camp_food_supply( 1_days * food_desire );
+    camp_helpers::camp_food_supply( 1_days * food_desire );
     avatar &player_character = get_avatar();
     recruit->spawn_at_precise( get_map().get_abs_sub().xy(),
                                player_character.pos() + point( -4, -4 ) );
@@ -2997,10 +2995,10 @@ int basecamp::recipe_batch_max( const recipe &making ) const
         for( int iter = 0; iter < max_checks; iter++ ) {
             time_duration work_days = base_camps::to_workdays( making.batch_duration(
                                           get_player_character(), max_batch + batch_size ) );
-            int food_req = time_to_food( work_days );
+            int food_req = camp_helpers::time_to_food( work_days );
             bool can_make = making.deduped_requirements().can_make_with_inventory(
                                 _inv, making.get_component_filter(), max_batch + batch_size );
-            if( can_make && camp_food_supply() > food_req ) {
+            if( can_make && camp_helpers::camp_food_supply() > food_req ) {
                 max_batch += batch_size;
             } else {
                 break;
@@ -3622,7 +3620,7 @@ int basecamp::recruit_evaluation( int &sbase, int &sexpansions, int &sfaction, i
             farm++;
         }
     }
-    sfaction = std::min( camp_food_supply() / 10000, 10 );
+    sfaction = std::min( camp_helpers::camp_food_supply() / 10000, 10 );
     sfaction += std::min( camp_discipline() / 10, 5 );
     sfaction += std::min( camp_morale() / 10, 5 );
 
@@ -3740,6 +3738,7 @@ int camp_helpers::camp_food_supply( int change, bool return_days ) // NEW
         yours->likes_u += yours->food_supply / 1250;
         yours->respects_u += yours->food_supply / 625;
         yours->food_supply = 0;
+        get_player_character().add_msg_if_player(_("Your followers think poorly of you for forcing them to work on an empty stomach."));
     }
     if( return_days ) {
         return yours->food_supply / 2500;
@@ -3754,18 +3753,23 @@ int camp_helpers::camp_food_supply( time_duration work )// NEW
 }
 
 int camp_helpers::time_to_food( time_duration work ) // NEW
-{
-    return 2500 * to_minutes<int>(work) / 24 / 60; // NEW
+{ // 35 seconds = 1 calorie
+    return 2500 * to_seconds<int>(work) / 24 / 60 / 60; // NEW
 }
 
-int camp_helpers::get_cal_cost(const item_location& loc, const player& c) {
-    if (!loc || !&c) return -1;
+int camp_helpers::get_craft_cost(const item_location& loc, const player& c) {
+    int y = c.expected_time_to_craft(loc); // turns
+    if (y <= 0) return 0;
     auto& r = loc->get_making();
-    int percent_complete = loc->item_counter / 100000;
-    auto y = c.expected_time_to_craft(r, loc->charges, false) / 100;
-    y = (y * (100 - percent_complete)) / 100;
-    return y;
+    int five_percent_steps = std::ceil((100 - (loc->item_counter / 100000)) / 5); // %##
+    double base_total_moves = std::max(static_cast<int64_t>(1), r.batch_time(c, loc->charges, 1.0f, 0));
+    int total_time=0;
+    for (int x = 0; x < five_percent_steps; x++) {
+        total_time += time_to_food(time_duration::from_moves(base_total_moves / 20) + 1_calories); // cost + 100/5 kcal
+    }
+    return total_time;
 }
+
 
 // mission support
 bool basecamp::distribute_food()
@@ -3873,7 +3877,7 @@ bool basecamp::distribute_food()
     }
 
     popup( _( "You distribute %d kcal worth of food to your companions." ), total );
-    camp_food_supply( total );
+    camp_helpers::camp_food_supply( total );
     return true;
 }
 

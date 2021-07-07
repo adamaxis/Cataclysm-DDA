@@ -5049,7 +5049,7 @@ std::string item::display_money( unsigned int quantity, unsigned int total,
 std::string item::display_name(unsigned int quantity, Character* player_character) const // NEW
 {
     if (!player_character) player_character = &get_player_character(); // NEW
-    std::string name = tname( quantity );
+    std::string name = tname( quantity, true, 0, true, player_character );
     std::string sidetxt;
     std::string amt;
 

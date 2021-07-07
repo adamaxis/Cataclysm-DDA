@@ -163,14 +163,15 @@ bool handle_liquid_from_container( item &container, int radius )
     }
     return handled;
 }
+
 bool get_liquid_target( item &liquid, const item *const source, const int radius,
                                const tripoint *const source_pos,
                                const vehicle *const source_veh,
                                const monster *const source_mon,
                                liquid_dest_opt &target,
+                               const std::vector<item_location> &avoid,
                                Character *player_character) // NEW - not static
 {
-    if (!player_character) player_character = &get_player_character(); // NEW
     if( !liquid.made_of_from_type( phase_id::LIQUID ) ) {
         dbg( D_ERROR ) << "game:handle_liquid: Tried to handle_liquid a non-liquid!";
         debugmsg( "Tried to handle_liquid a non-liquid!" );
@@ -178,7 +179,7 @@ bool get_liquid_target( item &liquid, const item *const source, const int radius
         return false;
     }
 
-    // NEW Character &player_character = get_player_character();
+    if (!player_character) player_character = &get_player_character(); // NEW
     if( test_mode ) {
         switch( test_mode_spilling_action ) {
             case test_mode_spilling_action_t::spill_all:
@@ -223,11 +224,13 @@ bool get_liquid_target( item &liquid, const item *const source, const int radius
         } );
     }
     // This handles containers found anywhere near the player, including on the map and in vehicle storage.
+    //if(source) avoid.push_back(source);
     menu.addentry( -1, true, 'c', _( "Pour into a container" ) );
     actions.emplace_back( [&]() {
+        // TODO: Mark source as avoid
         target.item_loc = game_menus::inv::container_for( *player_character, liquid, // NEW
-                          radius, /*avoid=*/source );
-        item *const cont = target.item_loc.get_item();
+                          radius, /*avoid=*/avoid );
+        item *const cont = &(*target.item_loc);
 
         if( cont == nullptr || cont->is_null() ) {
             add_msg( _( "Never mind." ) );
@@ -344,7 +347,7 @@ bool get_liquid_target( item &liquid, const item *const source, const int radius
 static bool perform_liquid_transfer( item &liquid, const tripoint *const source_pos,
                                      const vehicle *const source_veh, const int part_num,
                                      const monster *const source_mon, liquid_dest_opt &target,
-                                     Character &player_character=get_player_character()) // NEW
+                                     Character *player_character=nullptr) // NEW
 {
     if( !liquid.made_of_from_type( phase_id::LIQUID ) ) {
         dbg( D_ERROR ) << "game:handle_liquid: Tried to handle_liquid a non-liquid!";
@@ -352,16 +355,15 @@ static bool perform_liquid_transfer( item &liquid, const tripoint *const source_
         // "canceled by the user" because we *can* not handle it.
         return false;
     }
-
-    // NEW Character &player_character = get_player_character();
+    if (!player_character) player_character = &get_player_character();
     const auto create_activity = [&]() {
         if( source_veh != nullptr ) {
-            player_character.assign_activity( activity_id( "ACT_FILL_LIQUID" ) );
-            serialize_liquid_source( player_character.activity, *source_veh, part_num, liquid );
+            player_character->assign_activity( activity_id( "ACT_FILL_LIQUID" ) );
+            serialize_liquid_source( player_character->activity, *source_veh, part_num, liquid );
             return true;
         } else if( source_pos != nullptr ) {
-            player_character.assign_activity( activity_id( "ACT_FILL_LIQUID" ) );
-            serialize_liquid_source( player_character.activity, *source_pos, liquid );
+            player_character->assign_activity( activity_id( "ACT_FILL_LIQUID" ) );
+            serialize_liquid_source( player_character->activity, *source_pos, liquid );
             return true;
         } else if( source_mon != nullptr ) {
             return false;
@@ -373,15 +375,15 @@ static bool perform_liquid_transfer( item &liquid, const tripoint *const source_
     map &here = get_map();
     switch( target.dest_opt ) {
         case LD_CONSUME:
-            player_character.assign_activity( player_activity( consume_activity_actor( liquid ) ) );
+            player_character->assign_activity( player_activity( consume_activity_actor( liquid ) ) );
             liquid.charges--;
             return true;
         case LD_ITEM: {
             // Currently activities can only store item position in the players inventory,
             // not on ground or similar. TODO: implement storing arbitrary container locations.
             if( target.item_loc && create_activity() ) {
-                serialize_liquid_target( player_character.activity, target.item_loc );
-            } else if( player_character.pour_into( *target.item_loc, liquid ) ) {
+                serialize_liquid_target( player_character->activity, target.item_loc );
+            } else if( player_character->pour_into( *target.item_loc, liquid ) ) {
                 if( target.item_loc->needs_processing() ) {
                     // Polymorphism fail, have to introspect into the type to set the target container as active.
                     switch( target.item_loc.where() ) {
@@ -397,7 +399,7 @@ static bool perform_liquid_transfer( item &liquid, const tripoint *const source_
                             break;
                     }
                 }
-                player_character.mod_moves( -100 );
+                player_character->mod_moves( -100 );
             }
             return true;
         }
@@ -424,11 +426,11 @@ static bool perform_liquid_transfer( item &liquid, const tripoint *const source_
             const vpart_reference vp( *target.veh, target.veh->index_of_part( &tank ) );
 
             if( create_activity() ) {
-                serialize_liquid_target( player_character.activity, vp );
+                serialize_liquid_target( player_character->activity, vp );
                 return true;
-            } else if( player_character.pour_into( vp, liquid ) ) {
+            } else if( player_character->pour_into( vp, liquid ) ) {
                 // this branch is used in milking and magiclysm butchery blood draining
-                player_character.mod_moves( -1000 ); // consistent with veh_interact::do_refill activity
+                player_character->mod_moves( -1000 ); // consistent with veh_interact::do_refill activity
                 return true;
             } else {
                 // unclear what can reach this branch but return false just in case
@@ -438,7 +440,7 @@ static bool perform_liquid_transfer( item &liquid, const tripoint *const source_
         case LD_KEG:
         case LD_GROUND:
             if( create_activity() ) {
-                serialize_liquid_target( player_character.activity, target.pos );
+                serialize_liquid_target( player_character->activity, target.pos );
             } else {
                 if( target.dest_opt == LD_KEG ) {
                     iexamine::pour_into_keg( target.pos, liquid );
@@ -446,7 +448,7 @@ static bool perform_liquid_transfer( item &liquid, const tripoint *const source_
                     here.add_item_or_charges( target.pos, liquid );
                     liquid.charges = 0;
                 }
-                player_character.mod_moves( -100 );
+                player_character->mod_moves( -100 );
             }
             return true;
         case LD_NULL:
@@ -479,19 +481,43 @@ bool handle_liquid( item &liquid, const item *const source, const int radius,
         if (get_liquid_target(liquid, source, radius, source_pos, source_veh, source_mon,
             liquid_target)) {
             return perform_liquid_transfer(liquid, source_pos, source_veh, part_num, source_mon,
-                liquid_target, *pc);
+                liquid_target, pc);
         }
     } else {
-        if(dest_opt) for (auto &liquid_target : *dest_opt) {
-            if (!liquid_target.item_loc->is_null()) {
-                perform_liquid_transfer(liquid, source_pos, source_veh, part_num, source_mon,
-                    liquid_target, *pc); // NEW CHANGE
+        if(dest_opt) {
+            for (auto &liquid_target : *dest_opt) {
+                if (!liquid_target.item_loc->is_null()) {
+                    perform_liquid_transfer(liquid, source_pos, source_veh, part_num, source_mon,
+                        liquid_target, pc); // NEW CHANGE
+                }
             }
         }
         // TODO: add more sophisticated handling of overflow liquids
+        inventory i;
+        auto iX = inventory::form_from_mapX(pc->pos(), 1, pc, false, false,
+            [&liquid](const item_location& it) -> bool { return (*it).can_contain(liquid); });
+        //std::vector<item*> containers = i.items_with([&liquid](
+        //        const item& it) -> bool { return it.can_contain(liquid); });
         if (liquid.charges > 0) {
-            pc->add_msg_player_or_say(_("No room in containers, so I had to dump the %s I made."), liquid.tname());
-            get_map().add_item_or_charges(pc->pos(), liquid);
+            if (!pc->try_add(liquid, nullptr, false)) {
+                for (auto &dest : iX) {
+                    if ((*dest).can_contain(liquid)) {
+                        liquid_dest_opt ld;
+                        ld.item_loc = dest;
+                        ld.dest_opt = LD_ITEM;
+                        ld.pos = dest.position();
+                        perform_liquid_transfer(liquid, nullptr, source_veh, part_num, source_mon,
+                            ld, pc); // NEW CHANGE
+                    }
+                    if (liquid.charges <= 0) break;
+                }
+                if (liquid.charges > 0) {
+                    pc->add_msg_player_or_say("", string_format("No room in containers, so I had to dump the %s.", liquid.tname()));
+                    get_map().add_item_or_charges(pc->pos(), liquid);
+                }
+            } else {
+                pc->add_msg_player_or_say("", string_format("Added successfully."));
+            }
             liquid.charges = 0;
         }
     } // NEW

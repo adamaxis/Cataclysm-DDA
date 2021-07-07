@@ -203,6 +203,10 @@ class time_duration
             return time_duration( t );
         }
         template<typename T>
+        static constexpr time_duration from_calories(const T t) {
+            return time_duration(t * 34.56);
+        }
+        template<typename T>
         static constexpr time_duration from_moves( const T t ) {
             return time_duration( t / 100 );
         }
@@ -345,6 +349,10 @@ bool x_in_y( const time_duration &a, const time_duration &b );
  * `time_duration::from_*` function.
  */
 /**@{*/
+constexpr time_duration operator"" _calories(const unsigned long long int v)
+{
+    return time_duration::from_calories(v);
+}
 constexpr time_duration operator"" _turns( const unsigned long long int v )
 {
     return time_duration::from_turns( v );

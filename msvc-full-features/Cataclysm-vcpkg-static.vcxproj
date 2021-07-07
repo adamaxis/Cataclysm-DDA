@@ -30,7 +30,7 @@
   <PropertyGroup Label="Vcpkg">
     <VcpkgEnabled>true</VcpkgEnabled>
     <VcpkgEnableManifest>true</VcpkgEnableManifest>
-    <VcpkgManifestInstall>false</VcpkgManifestInstall>
+    <VcpkgManifestInstall>true</VcpkgManifestInstall>
     <VcpkgUseStatic>true</VcpkgUseStatic>
     <VcpkgAutoLink>true</VcpkgAutoLink>
     <VcpkgUserTriplet Condition="'$(Platform)'=='Win32'">x86-windows</VcpkgUserTriplet>
@@ -70,6 +70,12 @@
   <PropertyGroup Condition="'$(Configuration)'=='Release'">
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
+  <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <VcpkgInstalledDir>..\..\vcpkg</VcpkgInstalledDir>
+  </PropertyGroup>
+  <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <VcpkgInstalledDir>..\..\vcpkg</VcpkgInstalledDir>
+  </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
       <PreprocessorDefinitions>_WINDOWS;USE_WINMAIN;TILES;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -98,11 +104,18 @@
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
+      <StackReserveSize Condition="'$(Configuration)|$(Platform)'=='Release|x64'">2048</StackReserveSize>
+      <HeapReserveSize Condition="'$(Configuration)|$(Platform)'=='Release|x64'">2048</HeapReserveSize>
+      <HeapCommitSize Condition="'$(Configuration)|$(Platform)'=='Release|x64'">16</HeapCommitSize>
+      <StackCommitSize Condition="'$(Configuration)|$(Platform)'=='Release|x64'">16</StackCommitSize>
+      <LargeAddressAware Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</LargeAddressAware>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Platform)'=='Win32'">
     <ClCompile>
       <PreprocessorDefinitions>WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+      </AdditionalOptions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
