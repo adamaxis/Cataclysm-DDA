@@ -458,11 +458,6 @@ std::vector<item_location> inventory::form_from_mapX(const tripoint& origin, int
             }
         }
 
-        // pt2
-        auto i_add = [](item& i, Character &pc) {
-
-        };
-        //
 
         for (const tripoint& p : pts) {
             for (auto &pi : m.i_at(p)) {

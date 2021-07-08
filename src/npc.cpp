@@ -880,29 +880,14 @@ void npc::starting_weapon( const npc_class_id &type )
     weapon.set_owner( get_faction()->id );
 }
 
-// NEW
 bool npc::do_craft() {
-    int batch_size;
-    const recipe* r = select_crafting_recipe(batch_size, this);
-    if (r && crafting_allowed(*this, *r)) {
-        this->make_craft(r->ident(), batch_size);
-        return true;
-    }
-    return false;
+    this->craft(this->position);
+    return true;
 }
 
-// NEW
 bool npc::do_resume_craft() {
-    item_location target = game_menus::inv::assemble(*this);
-    if (target && can_continue_craft(*target)) {
-        this->add_msg_player_or_npc(
-            pgettext("in progress craft", "You start working on the %s."),
-            pgettext("in progress craft", "<npcname> starts working on the %s."),
-            target->tname());
-        this->assign_activity(player_activity(craft_activity_actor(target, false)));
-        return true;
-    } else this->say("Uh, ok.");
-    return false;
+    this->resume_craft(this->position);
+    return true;
 }
 
 bool npc::can_read( const item &book, std::vector<std::string> &fail_reasons )

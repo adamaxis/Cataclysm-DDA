@@ -2539,8 +2539,6 @@ class Character : public Creature, public visitable
         /**
          * Expected time to craft a recipe, with assumption that multipliers stay constant.
          */
-        //int64_t expected_time_to_craft( const recipe &rec, int batch_size = 1,
-        //                                bool in_progress = false ) const;
         int64_t expected_time_to_craft( const recipe &rec, int batch_size = 1 ) const;
         /**
         * Expected time to craft an assembly, with assumption that multipliers stay constant.
@@ -2563,6 +2561,7 @@ class Character : public Creature, public visitable
          * @param loc the location of the workbench. cata::nullopt indicates crafting from inventory.
          */
         void craft( const cata::optional<tripoint> &loc = cata::nullopt );
+        void resume_craft(const cata::optional<tripoint>& loc = cata::nullopt);
         void recraft( const cata::optional<tripoint> &loc = cata::nullopt );
         void long_craft( const cata::optional<tripoint> &loc = cata::nullopt );
         void make_craft( const recipe_id &id, int batch_size,

@@ -105,7 +105,7 @@ static const std::string flag_UNCRAFT_SINGLE_CHARGE( "UNCRAFT_SINGLE_CHARGE" );
 
 class basecamp;
 
-bool crafting_allowed( const Character &p, const recipe &rec ) // NEW
+static bool crafting_allowed( const Character &p, const recipe &rec )
 {
     if( p.morale_crafting_speed_multiplier( rec ) <= 0.0f ) {
         add_msg( m_info, _( "Your morale is too low to craft such a difficult thing…" ) );
@@ -316,10 +316,23 @@ bool Character::has_morale_to_craft() const
     return get_morale_level() >= -50;
 }
 
+void Character::resume_craft( const cata::optional<tripoint> &loc )
+{
+    item_location target = game_menus::inv::assemble(*this->as_player());
+    if (target && can_continue_craft(*target)) {
+        this->add_msg_player_or_npc(
+            pgettext("in progress craft", "You begin working on the %s."),
+            pgettext("in progress craft", "<npcname> starts working on the %s."),
+            target->tname());
+        this->assign_activity(player_activity(craft_activity_actor(target, false)));
+    } else if(this->is_npc()) this->as_npc()->say("Whatever you say, boss.");
+    return;
+}
+
 void Character::craft( const cata::optional<tripoint> &loc )
 {
     int batch_size = 0;
-    const recipe *rec = select_crafting_recipe( batch_size );
+    const recipe *rec = select_crafting_recipe( batch_size, this );
     if( rec ) {
         if( crafting_allowed( *this, *rec ) ) {
             make_craft( rec->ident(), batch_size, loc );
