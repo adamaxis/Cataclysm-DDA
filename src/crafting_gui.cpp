@@ -148,7 +148,7 @@ struct availability {
         can_craft_non_rotten = req.can_make_with_inventory(
                                    inv, no_rotten_filter, batch_size, craft_flags::start_only );
         has_food = (player->is_player() ? true : 
-            (camp_helpers::camp_food_supply() > camp_helpers::time_to_food(time_duration::from_turns(player->expected_time_to_craft(*r, batch_size, false))))); // NEW
+            (camp_helpers::camp_food_supply() > camp_helpers::time_to_food(time_duration::from_turns(player->expected_time_to_craft(*r, batch_size))))); // NEW
         const requirement_data &simple_req = r->simple_requirements();
         apparently_craftable = simple_req.can_make_with_inventory(
                                    inv, all_items_filter, batch_size, craft_flags::start_only );
@@ -699,7 +699,7 @@ const recipe *select_crafting_recipe( int &batch_size_out, Character *player_cha
                 current.clear();
                 for( int i = 1; i <= 50; i++ ) {
                     current.push_back( chosen );
-                    available.emplace_back( chosen, i, *player_character);
+                    available.emplace_back( chosen, i, player_character);
                 }
             } else {
                 static_popup popup;
