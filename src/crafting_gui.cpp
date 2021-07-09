@@ -136,7 +136,7 @@ void reset_recipe_categories()
 namespace
 {
 struct availability {
-    explicit availability( const recipe *r, int batch_size = 1, Character *player = nullptr) { // NEW
+    explicit availability( const recipe *r, int batch_size = 1, Character *player = nullptr) {
         if (!player) player = &get_player_character();
         const inventory &inv = player->crafting_inventory();
         auto all_items_filter = r->get_component_filter( recipe_filter_flags::none );
@@ -188,7 +188,7 @@ struct availability {
         } else if( !can_craft_non_rotten ) {
             return has_all_skills || ignore_missing_skills ? c_brown : c_red;
         } else {
-            return has_all_skills || ignore_missing_skills || has_food ? c_white : c_yellow;
+            return (has_all_skills || ignore_missing_skills) && has_food ? c_white : c_yellow;
         }
     }
 };
@@ -511,12 +511,12 @@ const recipe *select_crafting_recipe( int &batch_size_out, Character *player_cha
     int batch_line = 0;
     const recipe *chosen = nullptr;
     
-    if (!player_character) player_character = &get_player_character(); // NEW
-    const inventory &crafting_inv = player_character->crafting_inventory(); // NEW
-    const std::vector<npc *> helpers = player_character->get_crafting_helpers(); // NEW
+    if (!player_character) player_character = &get_player_character();
+    const inventory &crafting_inv = player_character->crafting_inventory();
+    const std::vector<npc *> helpers = player_character->get_crafting_helpers();
     std::string filterstring;
 
-    const auto &available_recipes = player_character->get_available_recipes( crafting_inv, &helpers ); // NEW
+    const auto &available_recipes = player_character->get_available_recipes( crafting_inv, &helpers );
     std::map<const recipe *, availability> availability_cache;
 
     ui.on_redraw( [&]( const ui_adaptor & ) {
@@ -528,7 +528,7 @@ const recipe *select_crafting_recipe( int &batch_size_out, Character *player_cha
             draw_hidden_amount( w_head, num_hidden, num_recipe );
         }
 
-        if (!player_character->is_player()) { // NEW
+        if (!player_character->is_player()) {
             draw_camp_calorie_amount(w_head);
         }
 
@@ -640,7 +640,7 @@ const recipe *select_crafting_recipe( int &batch_size_out, Character *player_cha
             }
 
             const std::vector<std::string> &info = cached_recipe_info(
-                    recp, avail, *player_character, qry_comps, batch_size, fold_width, color ); // NEW
+                    recp, avail, *player_character, qry_comps, batch_size, fold_width, color );
 
             const int total_lines = info.size();
             if( recipe_info_scroll < 0 ) {
@@ -1231,22 +1231,22 @@ static void draw_hidden_amount( const catacurses::window &w, int amount, int num
     }
 }
 
-static void draw_camp_calorie_amount(const catacurses::window& w) // NEW
+static void draw_camp_calorie_amount(const catacurses::window& w)
 {
     right_print(w, 2, 1, c_green, string_format(_("*Camp kcal reserve: %d *"), camp_helpers::camp_food_supply()));
 }
 
 // Anchors top-right
-static void draw_can_craft_indicator( const catacurses::window &w, const recipe &rec, Character *player_character) // NEW
+static void draw_can_craft_indicator( const catacurses::window &w, const recipe &rec, Character *player_character)
 {
-    if (!player_character) player_character = &get_player_character(); // NEW
+    if (!player_character) player_character = &get_player_character();
     // Draw text
-    if( player_character->lighting_craft_speed_multiplier( rec ) <= 0.0f ) { // NEW
+    if( player_character->lighting_craft_speed_multiplier( rec ) <= 0.0f ) {
         right_print( w, 0, 1, i_red, _( "too dark to craft" ) );
-    } else if( player_character->crafting_speed_multiplier( rec ) <= 0.0f ) { // NEW
+    } else if( player_character->crafting_speed_multiplier( rec ) <= 0.0f ) {
         // Technically not always only too sad, but must be too sad
         right_print( w, 0, 1, i_red, _( "too sad to craft" ) );
-    } else if( player_character->crafting_speed_multiplier( rec ) < 1.0f ) { // NEW
+    } else if( player_character->crafting_speed_multiplier( rec ) < 1.0f ) {
         right_print( w, 0, 1, i_yellow, string_format( _( "crafting is slow %d%%" ),
                      static_cast<int>( player_character->crafting_speed_multiplier( rec ) * 100 ) ) ); // NEW
     } else {

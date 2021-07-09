@@ -1982,13 +1982,13 @@ inventory_selector::inventory_selector(Character& u,
     const std::vector<item_location>& avoid)
     : u( u )
     , preset( preset )
+    , avoid(avoid)
     , ctxt( "INVENTORY", keyboard_mode::keychar )
     , active_column_index( 0 )
     , mode( navigation_mode::ITEM )
     , own_inv_column( preset )
     , own_gear_column( preset )
     , map_column( preset )
-    , avoid( avoid )
 {
     ctxt.register_action( "DOWN", to_translation( "Next item" ) );
     ctxt.register_action( "UP", to_translation( "Previous item" ) );
