@@ -548,11 +548,11 @@ public:
     explicit assemble_inventory_preset(const player& p, const inventory &inv) : inventory_selector_preset(), p(p), inv(inv) {
         faction* pc = get_player_character().get_faction();
         int kcal = pc->food_supply;
-        append_cell([this, &p, kcal, pc](const item_location& loc) -> std::string {
+        append_cell([&p](const item_location& loc) -> std::string {
             return string_format(_("<color_cyan>%s</color>"), to_string(time_duration::from_turns(p.expected_time_to_craft(loc))));
             }, _("TIME TO CRAFT"));
 
-        append_cell([this, &p, kcal, pc](const item_location& loc) -> std::string {
+        append_cell([&p](const item_location& loc) -> std::string {
             auto cost = camp_helpers::get_craft_cost(loc, p);
             if(cost > camp_helpers::camp_food_supply()) return string_format(_("<color_red>%d!</color>"), cost);
             return string_format(_("<color_cyan>%d</color>"), cost);
