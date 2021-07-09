@@ -1281,7 +1281,7 @@ void Character::complete_craft( item &craft, const cata::optional<tripoint> &loc
                     this->add_msg_player_or_say(m_good,
                         pgettext("memorized recipe", "You memorized the recipe for %s!"),
                         pgettext("memorized recipe", "I think I've memorized the recipe for %s now."),
-                        making.result_name()); // NEW
+                        making.result_name());
                 }
             }
         }
@@ -1394,9 +1394,9 @@ void Character::complete_craft( item &craft, const cata::optional<tripoint> &loc
             }
             bp.set_owner( get_faction()->id );
             if( bp.made_of( phase_id::LIQUID ) ) {
-                bp.byproduct_container_list= craft.byproduct_container_list; // NEW
-                if (this->is_player()) liquid_handler::handle_all_liquid(bp, PICKUP_RANGE); // NEW
-                else liquid_handler::handle_all_liquid(bp, PICKUP_RANGE, nullptr, this, &bp.byproduct_container_list); // NEW
+                bp.byproduct_container_list= craft.byproduct_container_list;
+                if (this->is_player()) liquid_handler::handle_all_liquid(bp, PICKUP_RANGE);
+                else liquid_handler::handle_all_liquid(bp, PICKUP_RANGE, nullptr, this, &bp.byproduct_container_list);
             } else if( !loc ) {
                 set_item_inventory( *this, bp );
             } else {

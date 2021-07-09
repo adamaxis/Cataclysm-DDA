@@ -441,7 +441,7 @@ static int count_charges_in_list( const itype *type, const map_stack &items )
 std::vector<item_location> inventory::form_from_mapX(const tripoint& origin, int range, const Character* pl,
     bool assign_invlet,
     bool clear_path,
-    const std::function<bool(const item_location&)> &filter) {
+    const std::function<bool(const item_location*)> &filter) {
         std::vector<item_location> inv;
         map &m = get_map();
         // populate a grid of spots that can be reached
@@ -466,14 +466,14 @@ std::vector<item_location> inventory::form_from_mapX(const tripoint& origin, int
                 }
                 if (m.accessible_items(p)) {
                     item_location il(item_location(map_cursor{ p }, &pi));
-                    if(filter(il)) inv.push_back(il);
+                    if(filter(&il)) inv.push_back(il);
                 }
             }
             // Handle any water from infinite map sources.
             item water = m.water_from(p);
             if (!water.is_null()) {
                 item_location il(item_location(map_cursor{ p }, &water));
-                if (filter(il)) inv.push_back(il);
+                if (filter(&il)) inv.push_back(il);
             }
             // kludge that can probably be done better to check specifically for toilet water to use in
             // crafting
@@ -489,7 +489,7 @@ std::vector<item_location> inventory::form_from_mapX(const tripoint& origin, int
                 }
                 if (water != toilet.end() && water->charges > 0) {
                     item_location il(item_location(map_cursor{ p }, &(*water)));
-                    if (filter(il)) inv.push_back(il);
+                    if (filter(&il)) inv.push_back(il);
                 }
             }
 
@@ -499,7 +499,7 @@ std::vector<item_location> inventory::form_from_mapX(const tripoint& origin, int
                 for (auto& i : liq_contained) {
                     if (i.made_of(phase_id::LIQUID)) {
                         item_location il(item_location(map_cursor{ p }, &i));
-                        if (filter(il)) inv.push_back(il);
+                        if (filter(&il)) inv.push_back(il);
                     }
                 }
             }
