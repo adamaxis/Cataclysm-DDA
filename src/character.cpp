@@ -274,16 +274,13 @@ static const trait_id trait_WOOLALLERGY( "WOOLALLERGY" );
 static const bionic_id bio_ads( "bio_ads" );
 static const bionic_id bio_blaster( "bio_blaster" );
 static const bionic_id bio_voice( "bio_voice" );
-static const bionic_id bio_flashlight( "bio_flashlight" );
 static const bionic_id bio_gills( "bio_gills" );
 static const bionic_id bio_ground_sonar( "bio_ground_sonar" );
 static const bionic_id bio_hydraulics( "bio_hydraulics" );
-static const bionic_id bio_jointservo( "bio_jointservo" );
 static const bionic_id bio_leukocyte( "bio_leukocyte" );
 static const bionic_id bio_memory( "bio_memory" );
 static const bionic_id bio_railgun( "bio_railgun" );
 static const bionic_id bio_shock_absorber( "bio_shock_absorber" );
-static const bionic_id bio_tattoo_led( "bio_tattoo_led" );
 static const bionic_id bio_ups( "bio_ups" );
 // Aftershock stuff!
 static const bionic_id afs_bio_linguistic_coprocessor( "afs_bio_linguistic_coprocessor" );
@@ -2263,6 +2260,18 @@ bool Character::has_any_bionic() const
     return !get_bionics().empty();
 }
 
+std::vector<item> Character::get_pseudo_items() const
+{
+    std::vector<item> result;
+    for( const bionic &bio : *my_bionics ) {
+        const bionic_data &bid = bio.info();
+        if( bid.fake_item && ( !bid.activated || bio.powered ) ) {
+            result.emplace_back( item( bid.fake_item ) );
+        }
+    }
+    return result;
+}
+
 bionic_id Character::get_remote_fueled_bionic() const
 {
     for( const bionic_id &bid : get_bionics() ) {
@@ -2359,8 +2368,8 @@ void Character::practice( const skill_id &id, int amount, int cap, bool suppress
     static const int INTMAX_SQRT = std::floor( std::sqrt( std::numeric_limits<int>::max() ) );
     SkillLevel &level = get_skill_level_object( id );
     const Skill &skill = id.obj();
-    if( !level.can_train() && !in_sleep_state() ) {
-        // If leveling is disabled, don't train, don't drain focus, don't print anything
+    if( !level.can_train() || in_sleep_state() || ( get_skill_level( id ) >= MAX_SKILL ) ) {
+        // Do not practice if: cannot train, asleep, or at effective skill cap
         // Leaving as a skill method rather than global for possible future skill cap setting
         return;
     }
@@ -7731,11 +7740,10 @@ float Character::active_light() const
 
     lumination = std::max( lumination, mut_lum );
 
-    if( lumination < 60 && has_active_bionic( bio_flashlight ) ) {
-        lumination = 60;
-    } else if( lumination < 5 && ( has_effect( effect_glowing ) ||
-                                   ( has_active_bionic( bio_tattoo_led ) ||
-                                     has_effect( effect_glowy_led ) ) ) ) {
+    lumination = std::max( lumination,
+                           static_cast<float>( enchantment_cache->modify_value( enchant_vals::mod::LUMINATION, 0 ) ) );
+
+    if( lumination < 5 && ( has_effect( effect_glowing ) || has_effect( effect_glowy_led ) ) ) {
         lumination = 5;
     }
     return lumination;
@@ -8081,7 +8089,6 @@ mutation_value_map = {
     { "mana_regen_multiplier", calc_mutation_value_multiplicative<&mutation_branch::mana_regen_multiplier> },
     { "bionic_mana_penalty", calc_mutation_value_multiplicative<&mutation_branch::bionic_mana_penalty> },
     { "casting_time_multiplier", calc_mutation_value_multiplicative<&mutation_branch::casting_time_multiplier> },
-    { "speed_modifier", calc_mutation_value_multiplicative<&mutation_branch::speed_modifier> },
     { "movecost_modifier", calc_mutation_value_multiplicative<&mutation_branch::movecost_modifier> },
     { "movecost_flatground_modifier", calc_mutation_value_multiplicative<&mutation_branch::movecost_flatground_modifier> },
     { "movecost_obstacle_modifier", calc_mutation_value_multiplicative<&mutation_branch::movecost_obstacle_modifier> },
@@ -11853,15 +11860,6 @@ int Character::run_cost( int base_cost, bool diag ) const
         if( has_trait( trait_PADDED_FEET ) && !footwear_factor() ) {
             movecost *= .9f;
         }
-        if( has_active_bionic( bio_jointservo ) ) {
-            if( is_running() ) {
-                movecost *= 0.85f;
-            } else {
-                movecost *= 0.95f;
-            }
-        } else if( has_bionic( bio_jointservo ) ) {
-            movecost *= 1.1f;
-        }
 
         if( worn_with_flag( flag_SLOWS_MOVEMENT ) ) {
             movecost *= 1.1f;
@@ -11950,14 +11948,6 @@ void Character::place_corpse()
         }
     }
 
-    // Restore amount of installed pseudo-modules of Power Storage Units
-    std::pair<int, int> storage_modules = amount_of_storage_bionics();
-    for( int i = 0; i < storage_modules.first; ++i ) {
-        body.put_in( item( "bio_power_storage" ), item_pocket::pocket_type::CORPSE );
-    }
-    for( int i = 0; i < storage_modules.second; ++i ) {
-        body.put_in( item( "bio_power_storage_mkII" ), item_pocket::pocket_type::CORPSE );
-    }
     here.add_item_or_charges( pos(), body );
 }
 
@@ -11993,14 +11983,6 @@ void Character::place_corpse( const tripoint_abs_omt &om_target )
         }
     }
 
-    // Restore amount of installed pseudo-modules of Power Storage Units
-    std::pair<int, int> storage_modules = amount_of_storage_bionics();
-    for( int i = 0; i < storage_modules.first; ++i ) {
-        body.put_in( item( "bio_power_storage" ), item_pocket::pocket_type::CORPSE );
-    }
-    for( int i = 0; i < storage_modules.second; ++i ) {
-        body.put_in( item( "bio_power_storage_mkII" ), item_pocket::pocket_type::CORPSE );
-    }
     bay.add_item_or_charges( fin, body );
 }
 
@@ -12770,6 +12752,11 @@ int Character::intimidation() const
 bool Character::has_proficiency( const proficiency_id &prof ) const
 {
     return _proficiencies->has_learned( prof );
+}
+
+float Character::get_proficiency_practice( const proficiency_id &prof ) const
+{
+    return _proficiencies->pct_practiced( prof );
 }
 
 bool Character::has_prof_prereqs( const proficiency_id &prof ) const

@@ -1234,6 +1234,7 @@ class Character : public Creature, public visitable
         /** Handles bionic activation effects of the entered bionic, returns if anything activated */
         bool activate_bionic( int b, bool eff_only = false, bool *close_bionics_ui = nullptr );
         std::vector<bionic_id> get_bionics() const;
+        std::vector<item> get_pseudo_items() const;
         /** Returns amount of Storage CBMs in the corpse **/
         std::pair<int, int> amount_of_storage_bionics() const;
         /** Returns true if the player has the entered bionic id */
@@ -1833,6 +1834,7 @@ class Character : public Creature, public visitable
 
         // --------------- Proficiency Stuff ----------------
         bool has_proficiency( const proficiency_id &prof ) const;
+        float get_proficiency_practice( const proficiency_id &prof ) const;
         bool has_prof_prereqs( const proficiency_id &prof ) const;
         void add_proficiency( const proficiency_id &prof, bool ignore_requirements = false );
         void lose_proficiency( const proficiency_id &prof, bool ignore_requirements = false );
@@ -2917,9 +2919,6 @@ class Character : public Creature, public visitable
          */
         void burn_fuel( int b, const auto_toggle_bionic_result &result );
 
-        // a cache of all active enchantment values.
-        // is recalculated every turn in Character::recalculate_enchantment_cache
-        pimpl<enchantment> enchantment_cache;
         player_activity destination_activity;
         /// A unique ID number, assigned by the game class. Values should never be reused.
         character_id id;
@@ -2979,6 +2978,10 @@ class Character : public Creature, public visitable
     public:
         time_point next_climate_control_check;
         bool last_climate_control_ret;
+
+        // a cache of all active enchantment values.
+        // is recalculated every turn in Character::recalculate_enchantment_cache
+        pimpl<enchantment> enchantment_cache;
 };
 
 Character &get_player_character();
