@@ -4785,9 +4785,9 @@ std::string item::dirt_symbol() const
 
 std::string item::tname(unsigned int quantity, bool with_prefix,
     unsigned int truncate, bool with_contents,
-    Character* player_character) const // NEW
+    Character* player_character) const
 {
-    if (!player_character) player_character = &get_player_character(); // NEW
+    if (!player_character) player_character = &get_player_character();
     // item damage and/or fouling level
     std::string damtext;
 
@@ -4888,13 +4888,12 @@ std::string item::tname(unsigned int quantity, bool with_prefix,
         }
     }
 
-    // NEW Character &player_character = get_player_character();
     std::string tagtext;
     if( is_food() ) {
-        if( has_flag( flag_HIDDEN_POISON ) && player_character->get_skill_level( skill_survival ) >= 3 ) { // NEW
+        if( has_flag( flag_HIDDEN_POISON ) && player_character->get_skill_level( skill_survival ) >= 3 ) {
             tagtext += _( " (poisonous)" );
         } else if( has_flag( flag_HIDDEN_HALLU ) &&
-                   player_character->get_skill_level( skill_survival ) >= 5 ) { // NEW
+                   player_character->get_skill_level( skill_survival ) >= 5 ) {
             tagtext += _( " (hallucinogenic)" );
         }
     }
