@@ -50,7 +50,6 @@
 #include "game.h"
 #include "game_constants.h"
 #include "gun_mode.h"
-#include "handle_liquid.h" // NEW
 #include "iexamine.h"
 #include "inventory.h"
 #include "item_category.h"
@@ -716,7 +715,7 @@ item item::split( int qty )
 bool item::is_null() const
 {
     // Actually, type should never by null at all.
-    return ( this == nullptr || type == nullptr || type == nullitem() || typeId().is_null() ); // NEW
+    return ( type == nullptr || type == nullitem() || typeId().is_null() );
 }
 
 bool item::is_unarmed_weapon() const
@@ -7499,7 +7498,7 @@ units::volume item::max_containable_volume() const
 
 bool item::can_contain( const item &it ) const
 {
-    if (!this) return false; // NEW
+    if (this->is_null()) return false;
     if( this == &it ) {
         // does the set of all sets contain itself?
         return false;
