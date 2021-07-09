@@ -439,7 +439,6 @@ static int count_charges_in_list( const itype *type, const map_stack &items )
 }
 
 std::vector<item_location> inventory::form_from_mapX(const tripoint& origin, int range, const Character* pl,
-    bool assign_invlet,
     bool clear_path,
     const std::function<bool(const item_location*)> &filter) {
         std::vector<item_location> inv;

@@ -494,7 +494,7 @@ bool handle_liquid( item &liquid, const item *const source, const int radius,
         }
         // TODO: add more sophisticated handling of overflow liquids
         inventory i;
-        auto iX = inventory::form_from_mapX(pc->pos(), 1, pc, false, false,
+        auto iX = inventory::form_from_mapX(pc->pos(), 1, pc, false,
             [&liquid](const item_location* it) -> bool { return (*it)->can_contain(liquid); });
         //std::vector<item*> containers = i.items_with([&liquid](
         //        const item& it) -> bool { return it.can_contain(liquid); });
@@ -507,7 +507,7 @@ bool handle_liquid( item &liquid, const item *const source, const int radius,
                         ld.dest_opt = LD_ITEM;
                         ld.pos = dest.position();
                         perform_liquid_transfer(liquid, nullptr, source_veh, part_num, source_mon,
-                            ld, pc); // NEW CHANGE
+                            ld, pc);
                     }
                     if (liquid.charges <= 0) break;
                 }
