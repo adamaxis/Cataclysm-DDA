@@ -316,7 +316,7 @@ bool Character::has_morale_to_craft() const
     return get_morale_level() >= -50;
 }
 
-void Character::resume_craft( const cata::optional<tripoint> &loc )
+void Character::resume_craft( )
 {
     item_location target = game_menus::inv::assemble(*this->as_player());
     if (target && can_continue_craft(*target)) {

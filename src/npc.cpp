@@ -886,7 +886,7 @@ bool npc::do_craft() {
 }
 
 bool npc::do_resume_craft() {
-    this->resume_craft(this->position);
+    this->resume_craft();
     return true;
 }
 

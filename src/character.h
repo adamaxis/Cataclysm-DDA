@@ -2561,7 +2561,7 @@ class Character : public Creature, public visitable
          * @param loc the location of the workbench. cata::nullopt indicates crafting from inventory.
          */
         void craft( const cata::optional<tripoint> &loc = cata::nullopt );
-        void resume_craft(const cata::optional<tripoint>& loc = cata::nullopt);
+        void resume_craft();
         void recraft( const cata::optional<tripoint> &loc = cata::nullopt );
         void long_craft( const cata::optional<tripoint> &loc = cata::nullopt );
         void make_craft( const recipe_id &id, int batch_size,

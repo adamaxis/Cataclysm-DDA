@@ -56,6 +56,8 @@
 #include "vehicle.h"
 #include "vpart_position.h"
 
+class Character; // NEW
+Character& get_player_character(); // NEW
 class gun_mode;
 class player;
 
