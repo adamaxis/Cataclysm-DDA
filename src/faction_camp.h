@@ -58,7 +58,7 @@ std::vector<std::pair<std::string, tripoint_abs_omt>> om_building_region(
 point om_simple_dir( const tripoint_abs_omt &omt_pos, const tripoint_abs_omt &omt_tar );
 } // namespace talk_function
 
-namespace camp_helpers { // NEW
+namespace camp_helpers {
     /// Changes the faction food supply by @ref change, 0 returns total food supply, a negative
     /// total food supply hurts morale
     int camp_food_supply(time_duration work);
@@ -69,6 +69,6 @@ namespace camp_helpers { // NEW
     int time_to_food(time_duration work);
     /// Returns the complete calorie cost of crafting
     int get_craft_cost(const item_location& loc, const player& c);
-}
+} // namespace camp_helpers
 
 #endif // CATA_SRC_FACTION_CAMP_H

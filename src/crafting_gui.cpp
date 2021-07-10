@@ -241,7 +241,7 @@ static std::vector<std::string> recipe_info(
                           recp.has_flag( flag_BLIND_HARD ) ? _( "Hard" ) :
                           _( "Impossible" ) );
 
-    if (!guy.is_player()) { // NEW
+    if (!guy.is_player()) {
         oss << string_format(_("Camp Food Cost(approx): %d kcal\n"),
             camp_helpers::time_to_food(time_duration::from_turns(expected_turns)+10_minutes));
     }
@@ -270,9 +270,8 @@ static std::vector<std::string> recipe_info(
                   "when it is not</color>.\n" );
     }
 
-    //const bool enough_food = (camp_helpers::camp_food_supply() > camp_helpers::time_to_food(time_duration::from_turns(expected_turns))); // NEW
     if (can_craft_this && !avail.has_food) {
-        oss << _("<color_red>Not enough available camp food to craft. Followers may revolt.</color>\n");
+        oss << _("<color_red>Not enough available camp food to craft.  Followers may revolt.</color>\n");
     }
 
     if( !can_craft_this && avail.apparently_craftable && avail.has_proficiencies ) {
