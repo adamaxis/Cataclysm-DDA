@@ -99,16 +99,16 @@ static void serialize_liquid_target( player_activity &act, const tripoint &pos )
 
 namespace liquid_handler
 {
-void handle_all_liquid( item liquid, const int radius, const item *const avoid, Character *pc, std::vector<liquid_dest_opt> *dest_opt) // NEW
+void handle_all_liquid( item liquid, const int radius, const item *const avoid, Character *pc, std::vector<liquid_dest_opt> *dest_opt)
 {
-    if (!pc) pc = &get_player_character(); // NEW
+    if (!pc) pc = &get_player_character();
     while( liquid.charges > 0 ) {
         // handle_liquid allows to pour onto the ground, which will handle all the liquid and
         // set charges to 0. This allows terminating the loop.
         // The result of handle_liquid is ignored, the player *has* to handle all the liquid.
-        if(pc->is_player()) handle_liquid( liquid, avoid, radius ); // NEW
+        if(pc->is_player()) handle_liquid( liquid, avoid, radius );
         else {
-            handle_liquid(liquid, avoid, radius, nullptr, nullptr, -1, nullptr, pc, dest_opt); // NEW
+            handle_liquid(liquid, avoid, radius, nullptr, nullptr, -1, nullptr, pc, dest_opt);
         }
     }
 }
@@ -462,7 +462,7 @@ bool handle_liquid( item &liquid, const item *const source, const int radius,
                     const vehicle *const source_veh, const int part_num,
                     const monster *const source_mon,
                     Character* pc,
-                    std::vector<liquid_dest_opt>* dest_opt) // NEW
+                    std::vector<liquid_dest_opt>* dest_opt)
 {
     if (!pc) pc = &get_player_character();
     if( liquid.made_of_from_type( phase_id::SOLID ) ) {

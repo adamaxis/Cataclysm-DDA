@@ -2545,7 +2545,7 @@ class Character : public Creature, public visitable
         /**
         * Expected time to craft an assembly, with assumption that multipliers stay constant.
         */
-        int64_t expected_time_to_craft(const item_location& rec) const;
+        int64_t expected_time_to_craft(const item_location& loc) const;
 
         std::vector<const item *> get_eligible_containers_for_crafting() const;
         bool check_eligible_containers_for_crafting( const recipe &rec, int batch_size = 1 ) const;

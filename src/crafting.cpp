@@ -325,8 +325,7 @@ void Character::resume_craft( )
             pgettext("in progress craft", "<npcname> starts working on the %s."),
             target->tname());
         this->assign_activity(player_activity(craft_activity_actor(target, false)));
-    } else if(this->is_npc()) this->as_npc()->say("Whatever you say, boss.");
-    return;
+    }
 }
 
 void Character::craft( const cata::optional<tripoint> &loc )
@@ -402,8 +401,8 @@ int64_t Character::expected_time_to_craft(const item_location& loc) const
     auto& r = loc->get_making();
     const size_t assistants = available_assistant_count(r);
     float modifier = crafting_speed_multiplier(r, true);
-    auto craft_time = std::max(static_cast<int64_t>(1), r.batch_time(*this, loc->charges, modifier, assistants));
-    auto percent_complete = (100.0 - (loc->item_counter / 100000.0));
+    int64_t craft_time = std::max(static_cast<int64_t>(1), r.batch_time(*this, loc->charges, modifier, assistants));
+    int64_t percent_complete = (100.0 - (loc->item_counter / 100000.0));
     return (craft_time * (percent_complete / 100.0) / 100);
 }
 

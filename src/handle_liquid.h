@@ -107,11 +107,11 @@ bool handle_liquid_from_container( item &container, int radius = 0 );
  * Basically `false` indicates the user does not *want* to handle the liquid, `true`
  * indicates they want to handle it.
  */
-bool handle_liquid( item &liquid, const item *source = nullptr, int radius = 0,
+bool handle_liquid( item &liquid, const item * const source = nullptr, int radius = 0,
                     const tripoint *source_pos = nullptr,
                     const vehicle *source_veh = nullptr, int part_num = -1,
                     const monster *source_mon = nullptr,
-                    Character* player_character = nullptr,
+                    Character* pc = nullptr,
                     std::vector<liquid_dest_opt>* dest_opt=nullptr); // NEW
 
 bool get_liquid_target(item& liquid, const item* const source, const int radius,
