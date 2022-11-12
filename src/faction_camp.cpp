@@ -299,12 +299,12 @@ static std::string camp_trip_description( const time_duration &total_time,
 
 /// Changes the faction food supply by @ref change, 0 returns total food supply, a negative
 /// total food supply hurts morale
-static int camp_food_supply( int change = 0, bool return_days = false );
+//int camp_food_supply( int change = 0, bool return_days = false ); // NEW
 /// Same as above but takes a time_duration and consumes from faction food supply for that
 /// duration of work
-static int camp_food_supply( time_duration work );
+//int camp_food_supply( time_duration work );
 /// Returns the total charges of food time_duration @ref work costs
-static int time_to_food( time_duration work );
+//int time_to_food( time_duration work );
 /// Changes the faction respect for you by @ref change, returns respect
 static int camp_discipline( int change = 0 );
 /// Changes the faction opinion for you by @ref change, returns opinion
@@ -4959,8 +4959,9 @@ std::string basecamp::farm_description( const tripoint_abs_omt &farm_pos, size_t
     return entry;
 }
 
+
 // food supply
-int camp_food_supply( int change, bool return_days )
+int camp_food_supply( int change, bool return_days)
 {
     faction *yours = get_player_character().get_faction();
     yours->food_supply += change;
@@ -4969,6 +4970,7 @@ int camp_food_supply( int change, bool return_days )
         yours->respects_u += yours->food_supply / 625;
         yours->trusts_u += yours->food_supply / 625;
         yours->food_supply = 0;
+        get_player_character().add_msg_if_player(_("Your followers think poorly of you for forcing them to work on an empty stomach.")); // NEW
     }
     if( return_days ) {
         return yours->food_supply / 2500;
@@ -4984,7 +4986,21 @@ int camp_food_supply( time_duration work )
 
 int time_to_food( time_duration work )
 {
-    return 2500 * to_hours<int>( work ) / 24;
+    return 2500 * to_hours<int>( work ) / 24 / 60 / 60;
+}
+
+
+int get_craft_cost(const item_location& loc, const Character& c) { // NEW
+    int y = c.expected_time_to_craft(loc); // turns
+    if (y <= 0) return 0;
+    auto& r = loc->get_making();
+    int five_percent_steps = std::ceil((100 - (loc->item_counter / 100000)) / 5); // %##
+    double base_total_moves = std::max(static_cast<int64_t>(1), r.batch_time(c, loc->charges, 1.0f, 0));
+    int total_time = 0;
+    for (int x = 0; x < five_percent_steps; x++) {
+        total_time += time_to_food(time_duration::from_moves(base_total_moves / 20) + 1_calories); // cost + 100/5 kcal
+    }
+    return total_time;
 }
 
 // mission support

@@ -42,8 +42,8 @@ namespace liquid_handler
  * charges of the liquid have been transferred.
  * `true` indicates some charges have been transferred (but not necessarily all of them).
  */
-void handle_all_liquid( item liquid, int radius, const item *avoid = nullptr );
-
+    void handle_all_liquid(item liquid, int radius, const item* avoid = nullptr,
+        Character* pc = nullptr, std::vector<liquid_dest_opt>* dest_opt = nullptr); // NEW
 /**
  * Consume / handle as much of the liquid as possible in varying ways. This function can
  * be used when the action can be canceled, which implies the liquid can be put back
@@ -54,7 +54,7 @@ void handle_all_liquid( item liquid, int radius, const item *avoid = nullptr );
  * declined all options to handle the liquid and no charges of the liquid have been transferred.
  * `true` indicates some charges have been transferred (but not necessarily all of them).
  */
-bool consume_liquid( item &liquid, int radius = 0, const item *avoid = nullptr );
+    bool consume_liquid( item &liquid, int radius = 0, const item *avoid = nullptr );
 
 /**
  * Handle finite liquid from ground. The function also handles consuming move points.
@@ -67,7 +67,7 @@ bool consume_liquid( item &liquid, int radius = 0, const item *avoid = nullptr )
  * The iterator is invalidated in that case. Otherwise the item remains but may have
  * fewer charges.
  */
-bool handle_liquid_from_ground( const map_stack::iterator &on_ground, const tripoint &pos,
+    bool handle_liquid_from_ground( const map_stack::iterator &on_ground, const tripoint &pos,
                                 int radius = 0 );
 
 /**
@@ -80,14 +80,14 @@ bool handle_liquid_from_ground( const map_stack::iterator &on_ground, const trip
  * The iterator is invalidated in that case. Otherwise the item remains but may have
  * fewer charges.
  */
-bool handle_liquid_from_container( item *in_container, item &container,
+    bool handle_liquid_from_container( item *in_container, item &container,
                                    int radius = 0 );
 /**
  * Shortcut to the above: handles the first item in the container.
  */
-bool handle_liquid_from_container( item &container, int radius = 0 );
+    bool handle_liquid_from_container( item &container, int radius = 0 );
 
-bool can_handle_liquid( const item &liquid );
+    bool can_handle_liquid( const item &liquid, Character *pc); // NEW
 
 /**
  * This may start a player activity if either \p source_pos or \p source_veh is not
@@ -108,15 +108,26 @@ bool can_handle_liquid( const item &liquid );
  * Basically `false` indicates the user does not *want* to handle the liquid, `true`
  * indicates they want to handle it.
  */
-bool handle_liquid( item &liquid, const item *source = nullptr, int radius = 0,
-                    const tripoint *source_pos = nullptr,
-                    const vehicle *source_veh = nullptr, int part_num = -1,
-                    const monster *source_mon = nullptr );
+    bool handle_liquid(item& liquid, const item* const source = nullptr, int radius = 0, // NEW
+        const tripoint* source_pos = nullptr,
+        const vehicle* source_veh = nullptr, int part_num = -1,
+        const monster* source_mon = nullptr,
+        Character *pc = nullptr,
+        std::vector<liquid_dest_opt>* dest_opt = nullptr);
+
+    bool get_liquid_target(item& liquid, const item* const source, const int radius, // NEW
+        const tripoint* const source_pos,
+        const vehicle* const source_veh,
+        const monster* const source_mon,
+        liquid_dest_opt& target,
+        const std::vector<item_location> *avoid = nullptr,
+        Character *player_character = nullptr);
 
 /* Not to be used directly. Use liquid_handler::handle_liquid instead. */
-bool perform_liquid_transfer( item &liquid, const tripoint *source_pos,
-                              const vehicle *source_veh, int part_num,
-                              const monster * /*source_mon*/, liquid_dest_opt &target );
+    bool perform_liquid_transfer(item& liquid, const tripoint* source_pos, // NEW
+        const vehicle* source_veh, int part_num,
+        const monster* /*source_mon*/, liquid_dest_opt& target,
+        Character *player_character = nullptr);
 } // namespace liquid_handler
 
 #endif // CATA_SRC_HANDLE_LIQUID_H

@@ -18,6 +18,7 @@
 #include <utility>
 #include <vector>
 
+#include "activity_actor_definitions.h"
 #include "activity_type.h"
 #include "auto_pickup.h"
 #include "calendar.h"
@@ -920,6 +921,8 @@ class npc : public Character
         bool can_read( const item &book, std::vector<std::string> &fail_reasons );
         time_duration time_to_read( const item &book, const Character &reader ) const;
         void do_npc_read();
+        bool do_craft(); // NEW
+        bool do_resume_craft(); // NEW
         void stow_item( item &it );
         bool wield( item &it ) override;
         void drop( const drop_locations &what, const tripoint &target,

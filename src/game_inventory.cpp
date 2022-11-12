@@ -27,6 +27,7 @@
 #include "debug.h"
 #include "display.h"
 #include "enums.h"
+#include "faction_camp.h" // NEW
 #include "flag.h"
 #include "game.h"
 #include "input.h"
@@ -130,9 +131,10 @@ static item_location inv_internal( Character &u, const inventory_selector_preset
                                    const std::string &title, int radius,
                                    const std::string &none_message,
                                    const std::string &hint = std::string(),
-                                   item_location container = item_location() )
+                                   item_location container = item_location(),
+    const std::vector<item_location> *avoid = nullptr) // NEW
 {
-    inventory_pick_selector inv_s( u, preset );
+    inventory_pick_selector inv_s(u, preset, avoid); // NEW
 
     inv_s.set_title( title );
     inv_s.set_hint( hint );
@@ -157,6 +159,13 @@ static item_location inv_internal( Character &u, const inventory_selector_preset
         inv_s.add_nearby_items( radius );
     }
 
+        /*
+        if(&avoid) for (auto& av : avoid) { // NEW
+            if (&(*container) == &(*av)) {
+                return false;
+            }
+        }
+        */
     if( u.has_activity( consuming ) ) {
         if( !u.activity.str_values.empty() ) {
             inv_s.set_filter( u.activity.str_values[0] );
@@ -429,7 +438,7 @@ class liquid_inventory_selector_preset : public inventory_selector_preset
 {
     public:
         explicit liquid_inventory_selector_preset( const item &liquid,
-                const item *const avoid ) : liquid( liquid ), avoid( avoid ) {
+            const std::vector<item_location>* avoid) : liquid( liquid ), avoid( avoid ) {
 
             append_cell( []( const item_location & loc ) {
                 if( loc.get_item() ) {
@@ -441,8 +450,11 @@ class liquid_inventory_selector_preset : public inventory_selector_preset
         }
 
         bool is_shown( const item_location &location ) const override {
-            if( location.get_item() == avoid ) {
-                return false;
+            if(avoid) for (auto& av : *avoid) {
+                if (&(*av) == &(*location)) return false; // NEW
+                if (location.get_item() == &(*av)) { // NEW???
+                    return false;
+                }
             }
             if( location.where() == item_location::type::character ) {
                 Character *character = get_creature_tracker().creature_at<Character>( location.position() );
@@ -458,17 +470,28 @@ class liquid_inventory_selector_preset : public inventory_selector_preset
 
     private:
         const item &liquid;
-        const item *const avoid;
+        const std::vector<item_location>* avoid;
 };
 
+// NEW - wrapper
+item_location game_menus::inv::container_for(Character& you, const item& liquid, int radius,
+    const item_location* const avoid) {
+    std::vector<item_location> av;
+    if (avoid) {
+        av.push_back((const item_location)*avoid);
+    }
+    return container_for(you, liquid, radius, (avoid ? &av : nullptr) ); // NEW
+}
+
+
 item_location game_menus::inv::container_for( Character &you, const item &liquid, int radius,
-        const item *const avoid )
+        const std::vector<item_location> *avoid ) // NEW
 {
-    return inv_internal( you, liquid_inventory_selector_preset( liquid, avoid ),
+    return inv_internal( you, liquid_inventory_selector_preset( liquid, avoid), // NEW, originally avoid
                          string_format( _( "Container for %s | %s %s" ), liquid.display_name( liquid.charges ),
                                         format_volume( liquid.volume() ), volume_units_abbr() ), radius,
                          string_format( _( "You don't have a suitable container for carrying %s." ),
-                                        liquid.tname() ) );
+                             liquid.tname()), "", item_location{}, avoid);
 }
 
 class pickup_inventory_preset : public inventory_selector_preset
@@ -604,6 +627,54 @@ item_location game_menus::inv::disassemble( Character &you )
                          _( "Disassemble item" ), 1,
                          _( "You don't have any items you could disassemble." ) );
 }
+
+// NEW
+class assemble_inventory_preset : public inventory_selector_preset
+{
+public:
+    explicit assemble_inventory_preset(const Character& p, const inventory& inv) : inventory_selector_preset(), p(p), inv(inv) {
+        faction* pc = get_player_character().get_faction();
+        int kcal = pc->food_supply;
+        append_cell([&p](const item_location& loc) -> std::string {
+            return string_format(_("<color_cyan>%s</color>"), to_string(time_duration::from_turns(p.expected_time_to_craft(loc))));
+            }, _("TIME TO CRAFT"));
+
+        append_cell([&p](const item_location& loc) -> std::string {
+            auto cost = get_craft_cost(loc, p);
+            if (cost > camp_food_supply()) return string_format(_("<color_red>%d!</color>"), cost);
+            return string_format(_("<color_cyan>%d</color>"), cost);
+            //if (must_feed && camp_food_supply() < time_to_food(duration)) {
+            }, string_format(_("CALORIE COST (CAMP KCAL : %d)"), kcal));
+
+    }
+
+    bool is_shown(const item_location& loc) const override {
+        return loc->is_craft();
+    }
+
+    std::string get_denial(const item_location& loc) const override {
+        if (!p.has_recipe(&loc->get_making(), inv, p.get_crafting_helpers())) {
+            return string_format(_("%s doesn't know the recipe for this"), p.get_name());
+        } //else if (!p.has_recipe(&loc->get_making(), inv, p.get_crafting_helpers())) {
+        //if (camp_helpers::camp_food_supply() < camp_helpers::get_craft_cost(loc, *p.as_player())) {
+        //    return string_format(_("You don't have enough camp food to feed %s for this job"), p.get_name());
+        //}
+        return inventory_selector_preset::get_denial(loc);
+    }
+
+private:
+    const Character& p;
+    const inventory& inv;
+};
+
+// NEW
+item_location game_menus::inv::assemble(Character& p)
+{
+    const std::string msg = p.is_avatar() ? _("There is nothing nearby to assemble.") :
+        string_format(_("There is nothing near %s to assemble."), p.disp_name());
+    return inv_internal(p, assemble_inventory_preset(p, p.crafting_inventory()), _("Continue crafting"), 1, msg);
+}
+
 
 class comestible_inventory_preset : public inventory_selector_preset
 {
@@ -1943,9 +2014,10 @@ drop_locations game_menus::inv::multidrop( avatar &you )
 }
 
 drop_locations game_menus::inv::pickup( avatar &you,
-                                        const cata::optional<tripoint> &target, const std::vector<drop_location> &selection )
+                                        const cata::optional<tripoint> &target, const std::vector<drop_location> &selection,
+                                        const std::vector<item_location> *avoid)
 {
-    const pickup_inventory_preset preset( you, /*skip_wield_check=*/true, /*ignore_liquidcont=*/true );
+    const pickup_inventory_preset preset( you, /*skip_wield_check=*/true, /*ignore_liquidcont=*/true);
 
     pickup_selector pick_s( you, preset, _( "ITEMS TO PICK UP" ), target );
 

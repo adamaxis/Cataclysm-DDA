@@ -1706,7 +1706,7 @@ bool inventory_selector::add_entry_rec( inventory_column &entry_column,
 
 bool inventory_selector::add_contained_items( item_location &container )
 {
-    return add_contained_items( container, own_inv_column );
+    return add_contained_items( container, own_inv_column);
 }
 
 bool inventory_selector::add_contained_items( item_location &container, inventory_column &column,
@@ -1715,6 +1715,7 @@ bool inventory_selector::add_contained_items( item_location &container, inventor
     if( container->has_flag( STATIC( flag_id( "NO_UNLOAD" ) ) ) ) {
         return false;
     }
+
 
     std::list<item *> const items = preset.get_pocket_type() == item_pocket::pocket_type::LAST
                                     ? container->all_items_top()
@@ -1803,7 +1804,14 @@ void inventory_selector::_add_map_items( tripoint const &target, item_category c
 
     for( item &it : items ) {
         item_location loc = floc( it );
-        add_entry_rec( *col, *col, loc, custom_cat, custom_cat );
+        bool found = false;
+        if(avoid) for (auto& av : *avoid) { // NEWX
+            if ((&it) == &(*av)) {
+                found = true;
+            }
+        }
+
+        add_entry_rec( *col, *col, loc, custom_cat, custom_cat ); // NEW
     }
 }
 
@@ -2389,9 +2397,10 @@ void inventory_selector::draw_footer( const catacurses::window &w ) const
     }
 }
 
-inventory_selector::inventory_selector( Character &u, const inventory_selector_preset &preset )
+inventory_selector::inventory_selector( Character &u, const inventory_selector_preset &preset, const std::vector<item_location> *avoid)
     : u( u )
     , preset( preset )
+    , avoid( avoid ) // NEW
     , ctxt( "INVENTORY", keyboard_mode::keychar )
     , active_column_index( 0 )
     , mode( navigation_mode::ITEM )
@@ -2869,7 +2878,7 @@ inventory_multiselector::inventory_multiselector( Character &p,
         const inventory_selector_preset &preset,
         const std::string &selection_column_title,
         const GetStats &get_stats,
-        const bool allow_select_contained ) :
+        const bool allow_select_contained) :
     inventory_selector( p, preset ),
     allow_select_contained( allow_select_contained ),
     selection_col( new selection_column( "SELECTION_COLUMN", selection_column_title ) ),

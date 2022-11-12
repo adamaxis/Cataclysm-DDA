@@ -59,6 +59,7 @@
 #include "ui.h"
 #include "viewer.h"
 
+static const activity_id ACT_CRAFT("ACT_CRAFT"); // NEW
 static const activity_id ACT_FIND_MOUNT( "ACT_FIND_MOUNT" );
 static const activity_id ACT_MOVE_LOOT( "ACT_MOVE_LOOT" );
 static const activity_id ACT_MULTIPLE_BUTCHER( "ACT_MULTIPLE_BUTCHER" );
@@ -291,6 +292,16 @@ void talk_function::do_butcher( npc &p )
 void talk_function::do_chop_plank( npc &p )
 {
     p.assign_activity( ACT_MULTIPLE_CHOP_PLANKS );
+}
+
+void talk_function::do_craft(npc& p) // NEWTODO : change to assign_activity
+{
+    p.do_craft();
+}
+
+void talk_function::do_resume_craft(npc& p) // NEWTODO : change to assign_activity
+{
+    p.do_resume_craft();
 }
 
 void talk_function::do_vehicle_deconstruct( npc &p )

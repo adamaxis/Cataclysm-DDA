@@ -6,6 +6,7 @@
 #include <utility>
 #include <vector>
 
+//#include "calendar.h"
 #include "coordinates.h"
 
 template <typename E> struct enum_traits;
@@ -15,6 +16,9 @@ namespace catacurses
 class window;
 } // namespace catacurses
 class npc;
+class Character;
+class item_location;
+class time_duration;
 struct mission_entry;
 struct point;
 namespace base_camps
@@ -57,4 +61,18 @@ std::vector<std::pair<std::string, tripoint_abs_omt>> om_building_region(
 /// Returns the x and y coordinates of ( omt_tar - omt_pos ), clamped to [-1, 1]
 point om_simple_dir( const tripoint_abs_omt &omt_pos, const tripoint_abs_omt &omt_tar );
 } // namespace talk_function
+
+//namespace camp_helpers { // NEW
+    /// Changes the faction food supply by @ref change, 0 returns total food supply, a negative
+    /// total food supply hurts morale
+    int camp_food_supply(time_duration work);
+    /// Same as above but takes a time_duration and consumes from faction food supply for that
+    /// duration of work
+    int camp_food_supply(int change = 0, bool return_days = false);
+    /// Returns the total charges of food time_duration @ref work costs
+    int time_to_food(time_duration work);
+    /// Returns the complete calorie cost of crafting
+    int get_craft_cost(const item_location& loc, const Character& c);
+//} // namespace camp_helpers
+
 #endif // CATA_SRC_FACTION_CAMP_H
