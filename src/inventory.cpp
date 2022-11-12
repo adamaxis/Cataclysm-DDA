@@ -442,6 +442,179 @@ static int count_charges_in_list( const itype *type, const map_stack &items )
     return 0;
 }
 
+
+std::vector<item_location> inventory::form_from_mapX(const tripoint& origin, int range, const Character* pl,
+    bool clear_path,
+    const std::function<bool(const item_location*)>& filter) {
+    std::vector<item_location> inv;
+    map& m = get_map();
+    // populate a grid of spots that can be reached
+    std::vector<tripoint> pts = {};
+    // If we need a clear path we care about the reachability of points
+    if (clear_path) {
+        m.reachable_flood_steps(pts, origin, range, 1, 100);
+    }
+    else {
+        // Fill reachable points with points_in_radius
+        tripoint_range<tripoint> in_radius = m.points_in_radius(origin, range);
+        for (const tripoint& p : in_radius) {
+            pts.emplace_back(p);
+        }
+    }
+
+
+    for (const tripoint& p : pts) {
+        for (auto& pi : m.i_at(p)) {
+            if (pl && !pi.is_owned_by(*pl, true)) {
+                continue;
+            }
+            if (m.accessible_items(p)) {
+                item_location il(item_location(map_cursor{ p }, &pi));
+                if (filter(&il)) inv.push_back(il);
+            }
+        }
+        // Handle any water from infinite map sources.
+        item water = m.water_from(p);
+        if (!water.is_null()) {
+            item_location il(item_location(map_cursor{ p }, &water));
+            if (filter(&il)) inv.push_back(il);
+        }
+        /*
+        // kludge that can probably be done better to check specifically for toilet water to use in
+        // crafting
+        if (m.furn(p)->has_examine(iexamine::water_source)) {
+            // get water charges at location
+            map_stack toilet = m.i_at(p);
+            auto water = toilet.end();
+            for (auto candidate = toilet.begin(); candidate != toilet.end(); ++candidate) {
+                if (candidate->typeId() == itype_water) {
+                    water = candidate;
+                    break;
+                }
+            }
+            if (water != toilet.end() && water->charges > 0) {
+                item_location il(item_location(map_cursor{ p }, &(*water)));
+                if (filter(&il)) inv.push_back(il);
+            }
+        }*/
+
+        // keg-kludge
+        if (m.furn(p)->has_examine(iexamine::keg)) {
+            map_stack liq_contained = m.i_at(p);
+            for (item& i : liq_contained) {
+                if (i.made_of(phase_id::LIQUID)) {
+                    item_location il(item_location(map_cursor{ p }, &i)); // NEW
+                    if (filter(&il)) inv.push_back(il);;
+                }
+            }
+        }
+
+        // form from vehicle
+        if (optional_vpart_position vp = m.veh_at(p)) {
+            //vp->form_inventory(*this);
+        }
+    }
+    pts.clear();
+    return inv;
+} 
+
+/*std::vector<item_location> inventory::form_from_mapX(const tripoint& origin, int range, const Character* pl,
+    bool clear_path,
+    const std::function<bool(const item_location*)>& filter)
+{
+    std::vector<item_location> inv;
+    map& m = get_map();
+    // populate a grid of spots that can be reached
+    std::vector<tripoint> pts = {};
+    // If we need a clear path we care about the reachability of points
+    if (clear_path) {
+        m.reachable_flood_steps(pts, origin, range, 1, 100);
+    }
+    else {
+        // Fill reachable points with points_in_radius
+        tripoint_range<tripoint> in_radius = m.points_in_radius(origin, range);
+        for (const tripoint& p : in_radius) {
+            pts.emplace_back(p);
+        }
+    }
+    items.clear();
+    provisioned_pseudo_tools.clear();
+
+    for (const tripoint& p : pts) {
+        // a temporary hack while trees are terrain
+        if (m.ter(p)->has_flag(ter_furn_flag::TFLAG_TREE)) {
+            provide_pseudo_item(itype_butchery_tree_pseudo, 0);
+        }
+        const furn_t& f = m.furn(p).obj();
+        if (item* furn_item = provide_pseudo_item(f.crafting_pseudo_item, 0)) {
+            const itype* ammo = f.crafting_ammo_item_type();
+            if (furn_item->has_pocket_type(item_pocket::pocket_type::MAGAZINE)) {
+                // NOTE: This only works if the pseudo item has a MAGAZINE pocket, not a MAGAZINE_WELL!
+                const bool using_ammotype = f.has_flag(ter_furn_flag::TFLAG_AMMOTYPE_RELOAD);
+                int amount = 0;
+                itype_id ammo_id = ammo->get_id();
+                // Some furniture can consume more than one item type.
+                if (using_ammotype) {
+                    amount = count_charges_in_list(&ammo->ammo->type, m.i_at(p), ammo_id);
+                }
+                else {
+                    amount = count_charges_in_list(ammo, m.i_at(p));
+                }
+                item furn_ammo(ammo_id, calendar::turn, amount);
+                furn_item->put_in(furn_ammo, item_pocket::pocket_type::MAGAZINE);
+            }
+        }
+        if (m.accessible_items(p)) {
+            for (item& i : m.i_at(p)) {
+                // if it's *the* player requesting this from from map inventory
+                // then don't allow items owned by another faction to be factored into recipe components etc.
+                if (pl && !i.is_owned_by(*pl, true)) {
+                    continue;
+                }
+                if (!i.made_of(phase_id::LIQUID)) {
+                    if (i.empty_container() && i.is_watertight_container()) {
+                        const int count = i.count_by_charges() ? i.charges : 1;
+                        update_liq_container_count(i.typeId(), count);
+                    }
+                    item_location il(item_location(map_cursor{ p }, &i)); // NEW
+                    if (filter(&il)) inv.push_back(il);
+                }
+            }
+        }
+        // Kludges for now!
+        if (m.has_nearby_fire(p, 0)) {
+            if (item* fire = provide_pseudo_item(itype_fire, 0)) {
+                fire->charges = 1;
+            }
+        }
+        // Handle any water from map sources.
+        item water = m.water_from(p);
+        if (!water.is_null()) {
+            item_location il(item_location(map_cursor{ p }, &water)); // NEW
+            if (filter(&il)) inv.push_back(il);
+        }
+
+        // keg-kludge
+        if (m.furn(p)->has_examine(iexamine::keg)) {
+            map_stack liq_contained = m.i_at(p);
+            for (item& i : liq_contained) {
+                if (i.made_of(phase_id::LIQUID)) {
+                    item_location il(item_location(map_cursor{ p }, &i)); // NEW
+                    if (filter(&il)) inv.push_back(il);;
+                }
+            }
+        }
+
+        // form from vehicle
+        if (optional_vpart_position vp = m.veh_at(p)) {
+            vp->form_inventory(*this);
+        }
+    }
+    pts.clear();
+    return inv;
+}*/
+
+
 /**
 * Finds the number of charges of the first item that matches ammotype.
 *

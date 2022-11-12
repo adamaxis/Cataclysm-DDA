@@ -1706,7 +1706,7 @@ bool inventory_selector::add_entry_rec( inventory_column &entry_column,
 
 bool inventory_selector::add_contained_items( item_location &container )
 {
-    return add_contained_items( container, own_inv_column );
+    return add_contained_items( container, own_inv_column);
 }
 
 bool inventory_selector::add_contained_items( item_location &container, inventory_column &column,
@@ -1803,7 +1803,13 @@ void inventory_selector::_add_map_items( tripoint const &target, item_category c
 
     for( item &it : items ) {
         item_location loc = floc( it );
-        add_entry_rec( *col, *col, loc, custom_cat, custom_cat );
+        bool found = false; // NEW
+        for (auto& av : avoid) { // NEW
+            if (&(*loc) == &(*av)) {
+                found = true;
+            }
+        }
+        if(!found) add_entry_rec( *col, *col, loc, custom_cat, custom_cat ); // NEW
     }
 }
 
@@ -2389,9 +2395,10 @@ void inventory_selector::draw_footer( const catacurses::window &w ) const
     }
 }
 
-inventory_selector::inventory_selector( Character &u, const inventory_selector_preset &preset )
+inventory_selector::inventory_selector( Character &u, const inventory_selector_preset &preset, const std::vector<item_location>& avoid)
     : u( u )
     , preset( preset )
+    , avoid( avoid ) // NEW
     , ctxt( "INVENTORY", keyboard_mode::keychar )
     , active_column_index( 0 )
     , mode( navigation_mode::ITEM )

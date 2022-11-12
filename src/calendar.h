@@ -223,6 +223,10 @@ class time_duration
          */
         /**@{*/
         template<typename T>
+        static constexpr time_duration from_calories(const T t) {
+            return time_duration(t * 34.56);
+        }
+        template<typename T>
         static constexpr time_duration from_turns( const T t ) {
             return time_duration( t );
         }
@@ -263,7 +267,7 @@ class time_duration
          * `to_hours<double>( from_minutes( 90 ) ) == 1.5`
          */
         /**@{*/
-        template<typename T>
+        template<typename T> // NEW
         friend constexpr T to_turns( const time_duration &duration ) {
             return duration.turns_;
         }
@@ -369,6 +373,10 @@ bool x_in_y( const time_duration &a, const time_duration &b );
  * `time_duration::from_*` function.
  */
 /**@{*/
+constexpr time_duration operator"" _calories(const unsigned long long int v) // NEW
+{
+    return time_duration::from_calories(v);
+}
 constexpr time_duration operator"" _turns( const unsigned long long int v )
 {
     return time_duration::from_turns( v );

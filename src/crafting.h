@@ -5,6 +5,7 @@
 #include <list>
 
 class Character;
+class recipe;
 class item;
 template <typename E> struct enum_traits;
 

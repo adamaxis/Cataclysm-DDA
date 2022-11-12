@@ -136,7 +136,8 @@ float Character::lighting_craft_speed_multiplier( const recipe &rec ) const
 {
     // negative is bright, 0 is just bright enough, positive is dark, +7.0f is pitch black
     float darkness = fine_detail_vision_mod() - 4.0f;
-    if( darkness <= 0.0f ) {
+    if (darkness <= 0.0f || this->is_npc()) { // NEW
+        // Skip light check for NPCs - for now
         return 1.0f; // it's bright, go for it
     }
     bool rec_blind = rec.has_flag( flag_BLIND_HARD ) || rec.has_flag( flag_BLIND_EASY );
@@ -338,13 +339,26 @@ bool Character::has_morale_to_craft() const
 void Character::craft( const cata::optional<tripoint> &loc, const recipe_id &goto_recipe )
 {
     int batch_size = 0;
-    const recipe *rec = select_crafting_recipe( batch_size, goto_recipe );
+    const recipe *rec = select_crafting_recipe( batch_size, goto_recipe, this); // NEW
     if( rec ) {
         if( crafting_allowed( *this, *rec ) ) {
             make_craft( rec->ident(), batch_size, loc );
         }
     }
 }
+
+void Character::resume_craft()
+{
+    item_location target = game_menus::inv::assemble(*this->as_avatar()); // NEW
+    if (target && can_continue_craft(*target)) {
+        this->add_msg_player_or_npc(
+            pgettext("in progress craft", "You begin working on the %s."),
+            pgettext("in progress craft", "<npcname> starts working on the %s."),
+            target->tname());
+        this->assign_activity(player_activity(craft_activity_actor(target, false)));
+    }
+}
+
 
 void Character::recraft( const cata::optional<tripoint> &loc )
 {
@@ -403,6 +417,17 @@ int64_t Character::expected_time_to_craft( const recipe &rec, int batch_size ) c
     const size_t assistants = available_assistant_count( rec );
     float modifier = crafting_speed_multiplier( rec );
     return rec.batch_time( *this, batch_size, modifier, assistants );
+}
+
+int64_t Character::expected_time_to_craft(const item_location& loc) const // NEW
+{
+    if (!loc) return -1;
+    const recipe &r = loc->get_making();
+    const size_t assistants = available_assistant_count(r);
+    float modifier = crafting_speed_multiplier(r);
+    int64_t craft_time = std::max(static_cast<int64_t>(1), r.batch_time(*this, loc->charges, modifier, assistants));
+    int64_t percent_complete = (100.0 - (loc->item_counter / 100000.0));
+    return (craft_time * (percent_complete / 100.0) / 100);
 }
 
 bool Character::check_eligible_containers_for_crafting( const recipe &rec, int batch_size ) const
@@ -826,48 +851,105 @@ static item_location place_craft_or_disassembly(
                 DROP
             };
 
-            uilist amenu;
-            amenu.text = string_format( pgettext( "in progress craft", "What to do with the %s?" ),
-                                        craft.display_name() );
+            if (!ch.is_npc()) {
+                uilist amenu;
+                amenu.text = string_format(pgettext("in progress craft", "What to do with the %s?"),
+                    craft.display_name());
 
-            amenu.addentry( WIELD_CRAFT, ch.can_unwield( *ch.get_wielded_item() ).success(),
-                            '1', _( "Dispose of your wielded %s and start working." ), ch.get_wielded_item()->tname() );
-            amenu.addentry( DROP_CRAFT, true, '2', _( "Put it down and start working." ) );
-            const bool can_stash = ch.can_pickVolume( craft ) &&
-                                   ch.can_pickWeight( craft, !get_option<bool>( "DANGEROUS_PICKUPS" ) );
-            amenu.addentry( STASH, can_stash, '3', _( "Store it in your inventory." ) );
-            amenu.addentry( DROP, true, '4', _( "Drop it on the ground." ) );
+                amenu.addentry(WIELD_CRAFT, ch.can_unwield(*ch.get_wielded_item()).success(),
+                    '1', _("Dispose of your wielded %s and start working."), ch.get_wielded_item()->tname());
+                amenu.addentry(DROP_CRAFT, true, '2', _("Put it down and start working."));
+                const bool can_stash = ch.can_pickVolume(craft) &&
+                    ch.can_pickWeight(craft, !get_option<bool>("DANGEROUS_PICKUPS"));
+                amenu.addentry(STASH, can_stash, '3', _("Store it in your inventory."));
+                amenu.addentry(DROP, true, '4', _("Drop it on the ground."));
 
-            amenu.query();
-            const option choice = amenu.ret == UILIST_CANCEL ? DROP : static_cast<option>( amenu.ret );
-            switch( choice ) {
+                amenu.query();
+                const option choice = amenu.ret == UILIST_CANCEL ? DROP : static_cast<option>(amenu.ret);
+                switch (choice) {
                 case WIELD_CRAFT: {
-                    if( cata::optional<item_location> it_loc = wield_craft( ch, craft ) ) {
+                    if (cata::optional<item_location> it_loc = wield_craft(ch, craft)) {
                         craft_in_world = *it_loc;
-                    } else {
+                    }
+                    else {
                         // This almost certainly shouldn't happen
-                        put_into_vehicle_or_drop( ch, item_drop_reason::tumbling, {craft} );
+                        put_into_vehicle_or_drop(ch, item_drop_reason::tumbling, { craft });
                     }
                     break;
                 }
                 case DROP_CRAFT: {
-                    craft_in_world = set_item_map_or_vehicle( ch, ch.pos(), craft );
+                    craft_in_world = set_item_map_or_vehicle(ch, ch.pos(), craft);
                     break;
                 }
                 case STASH: {
-                    set_item_inventory( ch, craft );
+                    set_item_inventory(ch, craft);
                     break;
                 }
                 case DROP: {
-                    put_into_vehicle_or_drop( ch, item_drop_reason::deliberate, {craft} );
+                    put_into_vehicle_or_drop(ch, item_drop_reason::deliberate, { craft });
                     break;
                 }
+                }
+            } else {
+                // NEW TODO: add code to set at map location
+                craft_in_world = set_item_map_or_vehicle(ch, ch.pos(), craft);
             }
         }
     } else {
         // We have a workbench, put the item there.
         craft_in_world = set_item_map_or_vehicle( ch, *target, craft );
     }
+
+    if (ch.is_npc()) { // NEW
+        const recipe& making = craft.get_making();
+        item i = making.create_result();
+        i.charges = craft.charges;
+        std::vector<item_location> ctl;
+        if (i.made_of(phase_id::LIQUID)) {
+            while (i.charges > 0) {
+                liquid_dest_opt ldo;
+                if (!liquid_handler::get_liquid_target(i, nullptr, PICKUP_RANGE, nullptr, nullptr, nullptr, ldo, ctl)) { // gpc required for ownership // NEW
+                    if (get_player_character().query_yn(_("%s may dump the extra %s on the ground.\n"
+                        "Are you sure you want to proceed?"), ch.name, i.display_name())) i.charges = 0;
+
+                }
+                else {
+                    if (ldo.dest_opt != LD_GROUND) {
+                        // remove and readd liquid
+                        units::volume x = ldo.item_loc.get_item()->get_total_capacity();
+                        i.charges -= i.charges_per_volume(x);
+                        ctl.emplace_back(ldo.item_loc);
+                    }
+                    else i.charges = 0;
+                    craft_in_world->liquid_container_list.emplace_back(ldo);
+                }
+            }
+        }
+        if (making.has_byproducts()) {
+            std::vector<item> bps = making.create_byproducts(craft.charges);
+            for (auto& b : bps) {
+                if (b.made_of(phase_id::LIQUID)) {
+                    while (b.charges > 0) {
+                        liquid_dest_opt ldo;
+                        if (!liquid_handler::get_liquid_target(b, nullptr, PICKUP_RANGE, nullptr, nullptr, nullptr, ldo, ctl)) { // NEW
+                            if (get_player_character().query_yn(_("%s may dump the extra %s on the ground.\n"
+                                "Are you sure you want to proceed?"), ch.name, b.display_name())) b.charges = 0;
+                        }
+                        else {
+                            if (ldo.dest_opt != LD_GROUND) {
+                                units::volume x = ldo.item_loc.get_item()->get_total_capacity();
+                                b.charges -= b.charges_per_volume(x);
+                                ctl.emplace_back(ldo.item_loc);
+                            }
+                            else b.charges = 0;
+                            craft_in_world->byproduct_container_list.emplace_back(ldo);
+                        }
+                    }
+                }
+            }
+        }
+    } // NEW
+
 
     if( !craft_in_world ) {
         ch.add_msg_if_player( _( "Wield and activate the %s to start working." ), craft.tname() );
@@ -909,6 +991,10 @@ void Character::start_craft( craft_command &command, const cata::optional<tripoi
         pgettext( "in progress craft", "You start working on the %s." ),
         pgettext( "in progress craft", "<npcname> starts working on the %s." ),
         craft.tname() );
+}
+
+void Character::craft_npc_calorie_consume(const time_duration& time) { // NEW
+    camp_food_supply(time);
 }
 
 bool Character::craft_skill_gain( const item &craft, const int &num_practice_ticks )
@@ -1249,9 +1335,15 @@ void Character::complete_craft( item &craft, const cata::optional<tripoint> &loc
             first = false;
             // TODO: reconsider recipe memorization
             if( knows_recipe( &making ) ) {
-                add_msg( _( "You craft %s from memory." ), making.result_name() );
+                add_msg_player_or_npc(
+                    pgettext("completed craft", "You craft the %s from memory."),
+                    pgettext("completed craft", "<npcname> finishes the %s they were working on."),
+                    making.result_name()); // NEW
             } else {
-                add_msg( _( "You craft %s using a reference." ), making.result_name() );
+                add_msg_player_or_npc(
+                    pgettext("completed craft", "You craft %s using a book as a reference."),
+                    pgettext("completed craft", "<npcname> finishes the %s using a book as a reference."),
+                    making.result_name()); // NEW
                 // If we made it, but we don't know it, we're using a book, device or NPC
                 // as a reference and have a chance to learn it.
                 // Base expected time to learn is 1000*(difficulty^4)/skill/int moves.
@@ -1267,8 +1359,10 @@ void Character::complete_craft( item &craft, const cata::optional<tripoint> &loc
                 const double time_to_learn = 1000 * 8 * std::pow( difficulty, 4 ) / learning_speed;
                 if( x_in_y( making.time_to_craft_moves( *this ),  time_to_learn ) ) {
                     learn_recipe( &making );
-                    add_msg( m_good, _( "You memorized the recipe for %s!" ),
-                             making.result_name() );
+                    this->add_msg_player_or_say(m_good,
+                        pgettext("memorized recipe", "You memorized the recipe for %s!"),
+                        pgettext("memorized recipe", "I think I've memorized the recipe for %s now."),
+                        making.result_name() );
                 }
             }
         }
@@ -1371,8 +1465,10 @@ void Character::complete_craft( item &craft, const cata::optional<tripoint> &loc
             food_contained.set_owner( get_faction()->id );
         }
 
-        if( newit.made_of( phase_id::LIQUID ) ) {
-            liquid_handler::handle_all_liquid( newit, PICKUP_RANGE );
+        if (newit.made_of(phase_id::LIQUID)) { // NEW
+            newit.liquid_container_list = craft.liquid_container_list;
+            if (this->is_avatar()) liquid_handler::handle_all_liquid(newit, PICKUP_RANGE);
+            else liquid_handler::handle_all_liquid(newit, PICKUP_RANGE, nullptr, this, &newit.liquid_container_list);
         } else if( !loc && !has_wield_conflicts( craft ) &&
                    can_wield( newit ).success() ) {
             wield_craft( *this, newit );
@@ -1396,7 +1492,9 @@ void Character::complete_craft( item &craft, const cata::optional<tripoint> &loc
             }
             bp.set_owner( get_faction()->id );
             if( bp.made_of( phase_id::LIQUID ) ) {
-                liquid_handler::handle_all_liquid( bp, PICKUP_RANGE );
+                bp.byproduct_container_list = craft.byproduct_container_list;
+                if (this->is_avatar()) liquid_handler::handle_all_liquid(bp, PICKUP_RANGE);
+                else liquid_handler::handle_all_liquid(bp, PICKUP_RANGE, nullptr, this, &bp.byproduct_container_list);
             } else if( !loc ) {
                 set_item_inventory( *this, bp );
             } else {

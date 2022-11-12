@@ -149,6 +149,12 @@ class inventory : public visitable
         void restack( Character &p );
         void form_from_zone( map &m, std::unordered_set<tripoint_abs_ms> &zone_pts,
                              const Character *pl = nullptr, bool assign_invlet = true );
+
+
+        static std::vector<item_location> form_from_mapX(const tripoint& origin, int range, const Character* pl, // NEW
+            bool clear_path,
+            const std::function<bool(const item_location*)>& filter = [](const item_location* it = nullptr) -> bool { return !it; }); // to bypass unused error error
+
         void form_from_map( const tripoint &origin, int range, const Character *pl = nullptr,
                             bool assign_invlet = true,
                             bool clear_path = true );

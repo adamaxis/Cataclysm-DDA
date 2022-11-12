@@ -20,6 +20,7 @@
 #include "character_martial_arts.h"
 #include "clzones.h"
 #include "coordinate_conversions.h"
+#include "crafting_gui.h"
 #include "creature_tracker.h"
 #include "cursesdef.h"
 #include "damage.h"
@@ -1297,6 +1298,17 @@ void npc::starting_weapon( const npc_class_id &type )
 
         weapon->set_owner( get_faction()->id );
     }
+}
+
+
+bool npc::do_craft() {
+    this->craft(this->pos());
+    return true;
+}
+
+bool npc::do_resume_craft() {
+    this->resume_craft();
+    return true;
 }
 
 bool npc::can_read( const item &book, std::vector<std::string> &fail_reasons )

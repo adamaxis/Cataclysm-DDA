@@ -6296,8 +6296,10 @@ std::string item::degradation_symbol() const
 }
 
 std::string item::tname( unsigned int quantity, bool with_prefix, unsigned int truncate,
-                         bool with_contents ) const
+                         bool with_contents,
+                         Character *player_character) const // NEW
 {
+    if (!player_character) player_character = &get_player_character(); // NEW
     // item damage and/or fouling level
     std::string damtext;
 
@@ -6418,19 +6420,19 @@ std::string item::tname( unsigned int quantity, bool with_prefix, unsigned int t
         contents_suffix_text = string_format( suffix, contents.num_item_stacks(), hidden );
     }
 
-    Character &player_character = get_player_character();
+    // Character &player_character = get_player_character(); // NEW
     std::string tagtext;
     if( is_food() ) {
-        if( has_flag( flag_HIDDEN_POISON ) && player_character.get_skill_level( skill_survival ) >= 3 ) {
+        if( has_flag( flag_HIDDEN_POISON ) && player_character->get_skill_level( skill_survival ) >= 3 ) {
             tagtext += _( " (poisonous)" );
         } else if( has_flag( flag_HIDDEN_HALLU ) &&
-                   player_character.get_skill_level( skill_survival ) >= 5 ) {
+                   player_character->get_skill_level( skill_survival ) >= 5 ) {
             tagtext += _( " (hallucinogenic)" );
         }
     }
     if( has_var( "spawn_location_omt" ) ) {
         tripoint_abs_omt loc( get_var( "spawn_location_omt", tripoint_zero ) );
-        tripoint_abs_omt player_loc( ms_to_omt_copy( get_map().getabs( player_character.pos() ) ) );
+        tripoint_abs_omt player_loc( ms_to_omt_copy( get_map().getabs( player_character->pos() ) ) );
         int dist = rl_dist( player_loc, loc );
         if( dist < 1 ) {
             tagtext += _( " (from here)" );
@@ -6471,7 +6473,7 @@ std::string item::tname( unsigned int quantity, bool with_prefix, unsigned int t
         }
     }
 
-    const sizing sizing_level = get_sizing( player_character );
+    const sizing sizing_level = get_sizing( *player_character );
 
     if( sizing_level == sizing::human_sized_small_char ) {
         tagtext += _( " (too big)" );
@@ -6534,7 +6536,7 @@ std::string item::tname( unsigned int quantity, bool with_prefix, unsigned int t
     if( has_flag( flag_WET ) || wetness ) {
         tagtext += _( " (wet)" );
     }
-    if( already_used_by_player( player_character ) ) {
+    if( already_used_by_player( *player_character ) ) {
         tagtext += _( " (used)" );
     }
     if( active && ( has_flag( flag_WATER_EXTINGUISH ) || has_flag( flag_LITCIG ) ) ) {
@@ -6609,8 +6611,9 @@ std::string item::display_money( unsigned int quantity, unsigned int total,
     }
 }
 
-std::string item::display_name( unsigned int quantity ) const
+std::string item::display_name( unsigned int quantity, Character *player_character) const // NEW
 {
+    if (!player_character) player_character = &get_player_character(); // NEW
     std::string name = tname( quantity );
     std::string sidetxt;
     std::string amt;
@@ -6626,14 +6629,14 @@ std::string item::display_name( unsigned int quantity ) const
             sidetxt = string_format( " (%s)", _( "right" ) );
             break;
     }
-    avatar &player_character = get_avatar();
+    // avatar &player_character = get_avatar(); // NEW
     int amount = 0;
     int max_amount = 0;
     bool show_amt = false;
     // We should handle infinite charges properly in all cases.
     if( is_book() && get_chapters() > 0 ) {
         // a book which has remaining unread chapters
-        amount = get_remaining_chapters( player_character );
+        amount = get_remaining_chapters( *player_character );
     } else if( magazine_current() ) {
         show_amt = true;
         const item *mag = magazine_current();
@@ -6728,7 +6731,7 @@ std::string item::display_name( unsigned int quantity ) const
     if( is_map() && calendar::turn != calendar::turn_zero ) {
         // TODO: fix point types
         tripoint map_pos_omt =
-            get_var( "reveal_map_center_omt", player_character.global_omt_location().raw() );
+            get_var( "reveal_map_center_omt", player_character->global_omt_location().raw() );
         tripoint_abs_sm map_pos =
             project_to<coords::sm>( tripoint_abs_omt( map_pos_omt ) );
         const city *c = overmap_buffer.closest_city( map_pos ).city;
@@ -10295,6 +10298,7 @@ ret_val<void> item::can_contain( const item &it, const bool nested,
                                  const bool ignore_rigidity, const bool ignore_pkt_settings,
                                  const item_location &parent_it, units::volume remaining_parent_volume ) const
 {
+    // if (this->is_null()) return false; // NEW
     if( this == &it || ( parent_it.where() != item_location::type::invalid &&
                          this == parent_it.get_item() ) ) {
         // does the set of all sets contain itself?

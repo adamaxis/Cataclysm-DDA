@@ -7,6 +7,8 @@
 #include <list>
 #include <utility>
 
+#include "faction.h"
+#include "faction_camp.h"
 #include "inventory_ui.h"
 #include "item_location.h"
 #include "type_id.h"
@@ -97,6 +99,10 @@ drop_locations pickup( avatar &you, const cata::optional<tripoint> &target = cat
 drop_locations smoke_food( Character &you, units::volume total_capacity,
                            units::volume used_capacity );
 
+
+
+/** NPC item assembly menu. */
+item_location assemble(Character& p);
 /**
 * Consume an item via a custom menu.
 * If item_location is provided then consume only from the contents of that container.
@@ -109,8 +115,11 @@ item_location consume_drink( avatar &you );
 /** Consuming a medication item via a custom menu. */
 item_location consume_meds( avatar &you );
 /** Choosing a container for liquid. */
-item_location container_for( Character &you, const item &liquid, int radius = 0,
-                             const item *avoid = nullptr );
+item_location container_for( Character& you, const item& liquid, int radius = 0,
+    const item_location* const avoid = nullptr); // NEW
+/** Choosing a container for liquid. */
+item_location container_for(Character& you, const item& liquid, int radius = 0,
+    const std::vector<item_location>& avoid = std::vector<item_location>()); // NEW
 /** Item disassembling menu. */
 item_location disassemble( Character &you );
 /** Gunmod installation menu. */
