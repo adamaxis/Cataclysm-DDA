@@ -4260,6 +4260,8 @@ void talk_effect_t<T>::parse_string_effect( const std::string &effect_id, const 
             WRAP( sort_loot ),
             WRAP( find_mount ),
             WRAP( dismount ),
+            WRAP( do_craft ),
+            WRAP( do_resume_craft ),
             WRAP( do_chop_plank ),
             WRAP( do_vehicle_deconstruct ),
             WRAP( do_vehicle_repair ),

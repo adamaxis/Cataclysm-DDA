@@ -574,7 +574,8 @@ class inventory_selector
 {
     public:
         explicit inventory_selector( Character &u,
-                                     const inventory_selector_preset &preset = default_preset );
+                                     const inventory_selector_preset &preset = default_preset,
+                                    const std::vector<item_location> *avoid = nullptr ); // NEW
         virtual ~inventory_selector();
         /** These functions add items from map / vehicles. */
         bool add_contained_items( item_location &container );
@@ -640,6 +641,7 @@ class inventory_selector
 
     protected:
         Character &u;
+        const std::vector<item_location> *avoid; // NEW
         const inventory_selector_preset &preset;
 
         /**
@@ -875,8 +877,9 @@ class inventory_pick_selector : public inventory_selector
 {
     public:
         explicit inventory_pick_selector( Character &p,
-                                          const inventory_selector_preset &preset = default_preset ) :
-            inventory_selector( p, preset ) {}
+            const inventory_selector_preset &preset = default_preset,
+            const std::vector<item_location> *avoid = {}) : // NEW
+            inventory_selector( p, preset, avoid ) {} // NEW
 
         item_location execute();
 };
@@ -903,7 +906,7 @@ class inventory_multiselector : public inventory_selector
                                           const inventory_selector_preset &preset = default_preset,
                                           const std::string &selection_column_title = "",
                                           const GetStats & = {},
-                                          bool allow_select_contained = false );
+                                          bool allow_select_contained = false); // NEW
         drop_locations execute();
         void toggle_entry( inventory_entry &entry, size_t count );
     protected:

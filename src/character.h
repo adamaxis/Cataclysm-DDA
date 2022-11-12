@@ -3104,6 +3104,10 @@ class Character : public Creature, public visitable
          * Expected time to craft a recipe, with assumption that multipliers stay constant.
          */
         int64_t expected_time_to_craft( const recipe &rec, int batch_size = 1 ) const;
+        /**
+         * Expected time to craft an assembly, with assumption that multipliers stay constant.
+         */
+        int64_t expected_time_to_craft(const item_location& loc) const; // NEW
         std::vector<const item *> get_eligible_containers_for_crafting() const;
         bool check_eligible_containers_for_crafting( const recipe &rec, int batch_size = 1 ) const;
         bool can_make( const recipe *r, int batch_size = 1 ) const;  // have components?
@@ -3123,6 +3127,7 @@ class Character : public Creature, public visitable
         void craft( const cata::optional<tripoint> &loc = cata::nullopt,
                     const recipe_id &goto_recipe = recipe_id() );
         void recraft( const cata::optional<tripoint> &loc = cata::nullopt );
+        void resume_craft(); // NEW
         void long_craft( const cata::optional<tripoint> &loc = cata::nullopt,
                          const recipe_id &goto_recipe = recipe_id() );
         void make_craft( const recipe_id &id, int batch_size,
@@ -3167,6 +3172,7 @@ class Character : public Creature, public visitable
          * @param time - the amount of time since the last practice tick
          */
         bool craft_proficiency_gain( const item &craft, const time_duration &time );
+        void craft_npc_calorie_consume(const time_duration& time); // NEW
         /**
          * Check if the player can disassemble an item using the current crafting inventory
          * @param obj Object to check for disassembly
