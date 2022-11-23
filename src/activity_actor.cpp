@@ -3087,6 +3087,7 @@ void craft_activity_actor::do_turn( player_activity &act, Character &crafter )
     if( five_percent_steps > 0 ) {
         // Divide by 100 for seconds, 20 for 5%
         const time_duration pct_time = time_duration::from_seconds(base_total_moves / 2000); // NEW
+        level_up |= crafter.craft_proficiency_gain(craft, pct_time * five_percent_steps);
         crafter.craft_proficiency_gain(craft, pct_time * five_percent_steps);
         if (crafter.is_npc()) { // NPC kcal calculation
             for (int x = 0; x < five_percent_steps; x++) {
@@ -3135,12 +3136,12 @@ void craft_activity_actor::do_turn( player_activity &act, Character &crafter )
         }
 
         if (crafter.is_npc()) { // NEWX
-            crafter.craftlog.pop_front();
-            //crafter.cancel_activity();
+            crafter.craftlog.pop_back();
+            crafter.cancel_activity();
             if (!crafter.craftlog.empty()) {
                 crafter.add_msg_player_or_npc(_("Player should not see this."),
                     _("<npcname> prepares for another project."));
-                    crafter.make_craft(crafter.craftlog.front().craft.ident(), crafter.craftlog.front().batch_size, crafter.craftlog.front().iloc);
+                    crafter.make_craft(crafter.craftlog.back().craft->ident(), crafter.craftlog.back().batch_size, crafter.craftlog.back().iloc);
             }
         } // NEWX
 

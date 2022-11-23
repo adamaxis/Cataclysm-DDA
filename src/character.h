@@ -37,6 +37,7 @@
 #include "enums.h"
 #include "flat_set.h"
 #include "game_constants.h"
+#include "handle_liquid.h"
 #include "item.h"
 #include "item_location.h"
 #include "item_pocket.h"
@@ -396,15 +397,21 @@ struct pocket_data_with_parent {
     int nested_level;
 };
 
-struct crafting_list { // NEW - for keeping track of craft info
-    recipe& craft;
+class crafting_list { // NEW - for keeping track of craft info
+public:
+    recipe* craft;
     int batch_size;
     cata::optional<tripoint> iloc;
-    std::list<liquid_dest_opt>& liquid_dump_spots;
-    std::list<liquid_dest_opt>& byproduct_dump_spots;
+    std::vector<liquid_dest_opt> liquid_dump_spots;
+    std::vector<liquid_dest_opt> byproduct_dump_spots;
     bool repeat;
-    crafting_list(recipe& recipe, int batch_size, bool repeat, cata::optional<tripoint> iloc, std::list<liquid_dest_opt>& liquid_dump_spots, std::list<liquid_dest_opt>& byproduct_dump_spots) :
-        craft(recipe), batch_size(batch_size), repeat(repeat), iloc(iloc), liquid_dump_spots(liquid_dump_spots), byproduct_dump_spots(byproduct_dump_spots) {}
+    crafting_list() {
+        craft = nullptr;
+        batch_size = 0;
+        repeat = false;
+    };
+    //crafting_list(recipe& recipe, int batch_size, bool repeat, cata::optional<tripoint> iloc, std::vector<liquid_dest_opt> &liquid_dump_spots, std::vector<liquid_dest_opt> &byproduct_dump_spots) :
+    //    craft(recipe), batch_size(batch_size), repeat(repeat), iloc(iloc), liquid_dump_spots(&liquid_dump_spots), byproduct_dump_spots(&byproduct_dump_spots) {}
 };
 
 class Character : public Creature, public visitable
@@ -2425,10 +2432,10 @@ class Character : public Creature, public visitable
         cata::optional<tripoint> destination_point;
         pimpl<inventory> inv;
         itype_id last_item;
-        std::list<crafting_list> craftlog; // NEW - craft backlog
     private:
         item weapon;
     public:
+        std::vector<crafting_list> craftlog {}; // NEW - craft backlog
         item_location get_wielded_item() const;
         item_location get_wielded_item();
         // This invalidates the item_location returned by get_wielded_item

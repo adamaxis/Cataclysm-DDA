@@ -45,7 +45,7 @@ namespace liquid_handler
  * `true` indicates some charges have been transferred (but not necessarily all of them).
  */
     void handle_all_liquid(item liquid, int radius, const item* avoid = nullptr,
-        Character* pc = nullptr, std::list<liquid_dest_opt>* dest_opt = nullptr); // NEW
+        Character* pc = nullptr, std::vector<liquid_dest_opt>* dest_opt = nullptr); // NEW
 /**
  * Consume / handle as much of the liquid as possible in varying ways. This function can
  * be used when the action can be canceled, which implies the liquid can be put back
@@ -91,7 +91,7 @@ namespace liquid_handler
 
     bool can_handle_liquid( const item &liquid, Character *pc); // NEW
 
-    bool preselect_liquid_target_for_crafting(const Character& p, item& craft, crafting_list &cl);
+    bool preselect_liquid_target_for_crafting(Character& p, item& craft, crafting_list *cl);
 /**
  * This may start a player activity if either \p source_pos or \p source_veh is not
  * null.
@@ -116,7 +116,7 @@ namespace liquid_handler
         const vehicle* source_veh = nullptr, int part_num = -1,
         const monster* source_mon = nullptr,
         Character *pc = nullptr,
-        std::list<liquid_dest_opt>* dest_opt = nullptr);
+        std::vector<liquid_dest_opt>* dest_opt = nullptr);
 
     bool get_liquid_target(item& liquid, const item* const source, const int radius, // NEW
         const tripoint* const source_pos,

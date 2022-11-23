@@ -354,19 +354,21 @@ void Character::craft(const cata::optional<tripoint>& loc, const recipe_id& goto
             if (rec) {
                 item i = rec->create_result();
                 i.charges = batch_size;
-                std::list<liquid_dest_opt> lds, bds;
-                crafting_list cl = { *(rec), batch_size, false, loc, lds, bds };
-                liquid_handler::preselect_liquid_target_for_crafting(*this, i, cl);
-                //liquid_handler::handle_all_liquid(i, 1, {}, this, &cl.dumpspots); // needs to be list instead of vector
-                this->craftlog.push_back(cl);
+                crafting_list cl;// = { *(rec), batch_size, false, loc, lds, bds};
+                cl.craft = rec;
+                cl.batch_size = batch_size;
+                cl.iloc = loc;
+                cl.repeat = false;
+                liquid_handler::preselect_liquid_target_for_crafting(*this, i, &cl);
+                this->craftlog.emplace_back(cl);
             }
             else {
                 done = true;
             }
         }
 
-        if (done && crafting_allowed(*this, craftlog.begin()->craft)) {
-            make_craft(craftlog.front().craft.ident(), craftlog.front().batch_size, loc);
+        if (done && crafting_allowed(*this, *craftlog.back().craft)) {
+            make_craft(craftlog.back().craft->ident(), craftlog.back().batch_size, loc);
         }
     }
 }
@@ -610,6 +612,10 @@ bool Character::can_start_craft( const recipe *rec, recipe_filter_flags flags,
                inv, rec->get_component_filter( flags ), batch_size, craft_flags::start_only );
 }
 
+
+
+// NEW need a precraft check similar to deduped_requirements, which cycles through existing 
+// 
 const inventory &Character::crafting_inventory( bool clear_path ) const
 {
     return crafting_inventory( tripoint_zero, PICKUP_RANGE, clear_path );
@@ -933,7 +939,6 @@ static item_location place_craft_or_disassembly(
 
     return craft_in_world;
 }
-
 
 void Character::start_craft( craft_command &command, const cata::optional<tripoint> &loc )
 {
@@ -1460,7 +1465,7 @@ void Character::complete_craft( item &craft, const cata::optional<tripoint> &loc
             if (this->is_avatar()) {
                 liquid_handler::handle_all_liquid(newit, PICKUP_RANGE);
             } else {
-                liquid_handler::handle_all_liquid(newit, PICKUP_RANGE, nullptr, this, &this->craftlog.front().liquid_dump_spots);
+                liquid_handler::handle_all_liquid(newit, PICKUP_RANGE, nullptr, this, &this->craftlog.back().liquid_dump_spots);
             }
         } else if( !loc && !has_wield_conflicts( craft ) &&
                    can_wield( newit ).success() ) {
@@ -1489,7 +1494,7 @@ void Character::complete_craft( item &craft, const cata::optional<tripoint> &loc
                 if (this->is_avatar()) { // NEW
                     liquid_handler::handle_all_liquid(bp, PICKUP_RANGE);
                 } else {
-                    liquid_handler::handle_all_liquid(bp, PICKUP_RANGE, nullptr, this, &this->craftlog.front().byproduct_dump_spots);
+                    liquid_handler::handle_all_liquid(bp, PICKUP_RANGE, nullptr, this, &this->craftlog.back().byproduct_dump_spots);
                 }
             } else if( !loc ) {
                 set_item_inventory( *this, bp );
@@ -1576,7 +1581,7 @@ bool Character::can_continue_craft( item &craft, const requirement_data &continu
             return std_filter( it ) &&
                    ( !use_rotten_filter || no_rotten_filter( it ) ) &&
                    ( !use_favorite_filter || no_favorite_filter( it ) );
-        };
+        }; 
 
         std::vector<comp_selection<item_comp>> item_selections;
         for( const auto &it : continue_reqs.get_components() ) {
