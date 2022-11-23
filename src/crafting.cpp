@@ -336,16 +336,35 @@ bool Character::has_morale_to_craft() const
     return get_morale_level() >= -50;
 }
 
-void Character::craft( const cata::optional<tripoint> &loc, const recipe_id &goto_recipe )
+void Character::craft(const cata::optional<tripoint>& loc, const recipe_id& goto_recipe)
 {
     int batch_size = 0;
-    const recipe *rec = select_crafting_recipe( batch_size, goto_recipe, this); // NEW
-    if( rec ) {
-        if( crafting_allowed( *this, *rec ) ) {
-            make_craft( rec->ident(), batch_size, loc );
+    bool done = false;
+    recipe* rec = nullptr;
+    while (!done) {
+        rec = (recipe*)select_crafting_recipe(batch_size, goto_recipe, this); // NEW
+        if (rec) {
+            crafting_list cl { rec, batch_size, false, loc };
+            this->craftlog.push_back(cl);
+            item i = rec->create_result();
+            i.charges = batch_size;
+            liquid_handler::handle_all_liquid(i, 1, {}, this, cl.dumpspots); // needs to be list instead of vector
+        }
+        else {
+            done = true;
+        }
+    }
+
+    if (done && crafting_allowed(*this, *craftlog.begin()->craft)) {
+        make_craft(craftlog.front().craft->ident(), craftlog.front().batch_size, loc);
+    }
+    else {
+        if (rec && crafting_allowed(*this, *rec)) {
+            make_craft(rec->ident(), batch_size, loc);
         }
     }
 }
+
 
 void Character::resume_craft()
 {
@@ -904,7 +923,7 @@ static item_location place_craft_or_disassembly(
         const recipe& making = craft.get_making();
         item i = making.create_result();
         i.charges = craft.get_making_batch_size();
-        std::vector<item_location> ctl;
+        std::list<item_location> ctl;
         if (i.made_of(phase_id::LIQUID)) {
             while (i.charges > 0) {
                 liquid_dest_opt ldo;
@@ -1493,8 +1512,11 @@ void Character::complete_craft( item &craft, const cata::optional<tripoint> &loc
             bp.set_owner( get_faction()->id );
             if( bp.made_of( phase_id::LIQUID ) ) {
                 bp.byproduct_container_list = craft.byproduct_container_list;
-                if (this->is_avatar()) liquid_handler::handle_all_liquid(bp, PICKUP_RANGE);
-                else liquid_handler::handle_all_liquid(bp, PICKUP_RANGE, nullptr, this, &bp.byproduct_container_list);
+                if (this->is_avatar()) { // NEW
+                    liquid_handler::handle_all_liquid(bp, PICKUP_RANGE);
+                } else {
+                    liquid_handler::handle_all_liquid(bp, PICKUP_RANGE, nullptr, this, &bp.byproduct_container_list);
+                }
             } else if( !loc ) {
                 set_item_inventory( *this, bp );
             } else {

@@ -443,10 +443,10 @@ static int count_charges_in_list( const itype *type, const map_stack &items )
 }
 
 
-std::vector<item_location> inventory::form_from_mapX(const tripoint& origin, int range, const Character* pl,
+std::list<item_location> inventory::form_from_mapX(const tripoint& origin, int range, const Character* pl,
     bool clear_path,
     const std::function<bool(const item_location*)>& filter) {
-    std::vector<item_location> inv;
+    std::list<item_location> inv;
     map& m = get_map();
     // populate a grid of spots that can be reached
     std::vector<tripoint> pts = {};

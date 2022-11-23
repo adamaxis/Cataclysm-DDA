@@ -5345,6 +5345,7 @@ bool game::npc_menu( npc &who )
         sort_armor,
         do_craft, // NEW
         resume_craft, // NEW
+        cancel_craft, // NEW
         cancel_activity, // NEW
         attack,
         disarm,
@@ -5370,7 +5371,13 @@ bool game::npc_menu( npc &who )
         amenu.addentry(resume_craft, obeys && who.is_following(), 'b', _("Resume craft")); // NEW
     }
     else {
-        amenu.addentry(cancel_activity, obeys, 'c', _("Cancel activity")); // NEW
+        amenu.addentry(cancel_activity, obeys, 'c', _("Cancel activity")); // NEWX
+        // this->assign_activity(player_activity(craft_activity_actor(target, false))
+        if (who.has_activity(activity_id("ACT_CRAFT")))
+            amenu.addentry(cancel_activity, obeys, 'x', _("Cancel craft")); // NEWX
+            for (auto& x : who.backlog) {
+                
+            }
     }
     amenu.addentry( attack, true, 'a', _( "Attack" ) );
     if( !who.is_player_ally() ) {

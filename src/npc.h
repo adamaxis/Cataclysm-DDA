@@ -1255,6 +1255,8 @@ class npc : public Character
         npc_attitude get_attitude() const override;
         void set_attitude( npc_attitude new_attitude );
         void set_mission( npc_mission new_mission );
+        bool has_activity(const activity_id& type) const;
+        bool has_activity(const std::vector<activity_id>& types) const;
         bool has_activity() const;
         bool has_job() const {
             return job.has_job();

@@ -1302,7 +1302,7 @@ void npc::starting_weapon( const npc_class_id &type )
 
 
 bool npc::do_craft() {
-    this->craft(this->pos());
+    this->craft(this->pos(), {});
     return true;
 }
 
@@ -3670,6 +3670,16 @@ void npc::set_mission( npc_mission new_mission )
 bool npc::has_activity() const
 {
     return mission == NPC_MISSION_ACTIVITY && attitude == NPCATT_ACTIVITY;
+}
+
+bool npc::has_activity(const activity_id& type) const
+{
+    return activity.id() == type;
+}
+
+bool npc::has_activity(const std::vector<activity_id>& types) const
+{
+    return std::find(types.begin(), types.end(), activity.id()) != types.end();
 }
 
 npc_attitude npc::get_attitude() const

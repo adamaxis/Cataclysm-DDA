@@ -2396,6 +2396,15 @@ class Character : public Creature, public visitable
         cata::optional<tripoint> destination_point;
         pimpl<inventory> inv;
         itype_id last_item;
+        struct crafting_list { // NEW - for keeping track of craft info
+            recipe* craft;
+            int batch_size;
+            cata::optional<tripoint> iloc;
+            std::list<liquid_dest_opt>* dumpspots;
+            bool repeat;
+            crafting_list(recipe *recipe, int batch_size, bool repeat, cata::optional<tripoint> iloc) : craft(recipe), batch_size(batch_size), repeat(repeat), iloc(iloc), dumpspots(dumpspots) {}
+        };
+        std::list<crafting_list> craftlog; // NEW - craft backlog
     private:
         item weapon;
     public:
@@ -3107,7 +3116,7 @@ class Character : public Creature, public visitable
          * @param goto_recipe the recipe to display initially. A null recipe_id opens the default crafting screen.
          */
         void craft( const cata::optional<tripoint> &loc = cata::nullopt,
-                    const recipe_id &goto_recipe = recipe_id() );
+                    const recipe_id &goto_recipe = recipe_id());
         void recraft( const cata::optional<tripoint> &loc = cata::nullopt );
         void resume_craft(); // NEW
         void long_craft( const cata::optional<tripoint> &loc = cata::nullopt,

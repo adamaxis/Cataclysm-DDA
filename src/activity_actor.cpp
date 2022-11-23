@@ -3124,13 +3124,26 @@ void craft_activity_actor::do_turn( player_activity &act, Character &crafter )
         craft_item.remove_item();
         // We need to cache this before we cancel the activity else we risk Use After Free
         const bool will_continue = is_long;
-        crafter.cancel_activity();
+        if (crafter.is_avatar()) {
+            crafter.cancel_activity();
+        }
         crafter.complete_craft( craft_copy, location );
         if( will_continue ) {
             if( crafter.making_would_work( crafter.lastrecipe, craft_copy.get_making_batch_size() ) ) {
                 crafter.last_craft->execute( location );
             }
         }
+
+        if (crafter.is_npc()) { // NEWX
+            crafter.craftlog.pop_front();
+            crafter.cancel_activity();
+            if (!crafter.craftlog.empty()) {
+                crafter.add_msg_player_or_npc(_("Player should not see this."),
+                    _("<npcname> prepares for another project."));
+                    crafter.make_craft(crafter.craftlog.front().craft->ident(), crafter.craftlog.front().batch_size, crafter.craftlog.front().iloc);
+            }
+        } // NEWX
+
     } else {
         if( level_up && craft.get_making().is_practice() &&
             query_yn( _( "Your proficiency has increased.  Stop practicing?" ) ) ) {

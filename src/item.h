@@ -2699,8 +2699,8 @@ class item : public visitable
         std::list<item> remove_items_with( const std::function<bool( const item & )> &filter,
                                            int count = INT_MAX ) override;
         // Container lists for NPC crafting. Used for liquid crafting.
-        std::vector<liquid_dest_opt> liquid_container_list; // NEW
-        std::vector<liquid_dest_opt> byproduct_container_list; // NEW
+        std::list<liquid_dest_opt> liquid_container_list; // NEW
+        std::list<liquid_dest_opt> byproduct_container_list; // NEW
 
         /** returns a list of pointers to all top-level items that are not mods */
         std::list<const item *> all_items_top() const;

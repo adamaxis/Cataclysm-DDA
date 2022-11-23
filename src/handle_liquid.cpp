@@ -105,7 +105,7 @@ static void serialize_liquid_target( player_activity &act, const tripoint &pos )
 
 namespace liquid_handler
 {
-void handle_all_liquid(item liquid, const int radius, const item* const avoid, Character* pc, std::vector<liquid_dest_opt>* dest_opt)
+void handle_all_liquid(item liquid, const int radius, const item* const avoid, Character* pc, std::list<liquid_dest_opt>* dest_opt)
 {
     if (!pc) pc = &get_player_character();
     while( liquid.charges > 0 && can_handle_liquid( liquid, pc) ) {
@@ -175,7 +175,7 @@ bool get_liquid_target(item& liquid, const item* const source, const int radius,
     const vehicle* const source_veh,
     const monster* const source_mon,
     liquid_dest_opt& target,
-    const std::vector<item_location> *avoid,
+    const std::list<item_location> *avoid,
     Character* player_character) // NEW - not static
 {
     if( !liquid.made_of_from_type( phase_id::LIQUID ) ) {
@@ -475,7 +475,7 @@ bool handle_liquid( item &liquid, const item *const source, const int radius,
                     const tripoint *const source_pos,
                     const vehicle *const source_veh, const int part_num,
                     const monster *const source_mon,
-                    Character* pc, std::vector<liquid_dest_opt>* dest_opt)
+                    Character* pc, std::list<liquid_dest_opt>* dest_opt)
 {
     bool success = false;
     if( !can_handle_liquid( liquid, pc ) ) {
