@@ -111,6 +111,7 @@ static const std::string flag_FULL_MAGAZINE( "FULL_MAGAZINE" );
 static const std::string flag_NO_RESIZE( "NO_RESIZE" );
 static const std::string flag_UNCRAFT_LIQUIDS_CONTAINED( "UNCRAFT_LIQUIDS_CONTAINED" );
 
+
 class basecamp;
 
 static bool crafting_allowed( const Character &p, const recipe &rec )
@@ -336,16 +337,40 @@ bool Character::has_morale_to_craft() const
     return get_morale_level() >= -50;
 }
 
-void Character::craft( const cata::optional<tripoint> &loc, const recipe_id &goto_recipe )
+void Character::craft(const cata::optional<tripoint>& loc, const recipe_id& goto_recipe)
 {
-    int batch_size = 0;
-    const recipe *rec = select_crafting_recipe( batch_size, goto_recipe, this); // NEW
-    if( rec ) {
-        if( crafting_allowed( *this, *rec ) ) {
-            make_craft( rec->ident(), batch_size, loc );
+    int batch_size;
+    recipe* rec = nullptr;
+    if (this->is_avatar()) {                                                                    // player
+        rec = (recipe*)select_crafting_recipe(batch_size, goto_recipe);
+        if (rec && crafting_allowed(*this, *rec)) {
+            make_craft(rec->ident(), batch_size, loc);
+        }
+        return;
+    } else {                                                                                      // npc
+        bool done = false;
+        while (!done) {
+            rec = (recipe*)select_crafting_recipe(batch_size, goto_recipe, this); // NEW
+            if (rec) {
+                item i = rec->create_result();
+                i.charges = batch_size;
+                std::list<liquid_dest_opt> lds, bds;
+                crafting_list cl = { *(rec), batch_size, false, loc, lds, bds };
+                liquid_handler::preselect_liquid_target_for_crafting(*this, i, cl);
+                //liquid_handler::handle_all_liquid(i, 1, {}, this, &cl.dumpspots); // needs to be list instead of vector
+                this->craftlog.push_back(cl);
+            }
+            else {
+                done = true;
+            }
+        }
+
+        if (done && crafting_allowed(*this, craftlog.begin()->craft)) {
+            make_craft(craftlog.front().craft.ident(), craftlog.front().batch_size, loc);
         }
     }
 }
+
 
 void Character::resume_craft()
 {
@@ -851,7 +876,7 @@ static item_location place_craft_or_disassembly(
                 DROP
             };
 
-            if (!ch.is_npc()) {
+            if (ch.is_avatar()) {
                 uilist amenu;
                 amenu.text = string_format(pgettext("in progress craft", "What to do with the %s?"),
                     craft.display_name());
@@ -900,56 +925,7 @@ static item_location place_craft_or_disassembly(
         craft_in_world = set_item_map_or_vehicle( ch, *target, craft );
     }
 
-    if (ch.is_npc()) { // NEW
-        const recipe& making = craft.get_making();
-        item i = making.create_result();
-        i.charges = craft.get_making_batch_size();
-        std::vector<item_location> ctl;
-        if (i.made_of(phase_id::LIQUID)) {
-            while (i.charges > 0) {
-                liquid_dest_opt ldo;
-                if (!liquid_handler::get_liquid_target(i, nullptr, PICKUP_RANGE, nullptr, nullptr, nullptr, ldo, &ctl)) { // gpc required for ownership // NEW
-                    if (get_player_character().query_yn(_("%s may dump the extra %s on the ground.\n"
-                        "Are you sure you want to proceed?"), ch.name, i.display_name())) i.charges = 0;
-
-                }
-                else {
-                    if (ldo.dest_opt != LD_GROUND) {
-                        // remove and readd liquid
-                        units::volume x = ldo.item_loc.get_item()->get_total_capacity();
-                        i.charges -= i.charges_per_volume(x);
-                        ctl.emplace_back(ldo.item_loc);
-                    }
-                    else i.charges = 0;
-                    craft_in_world->liquid_container_list.emplace_back(ldo);
-                }
-            }
-        }
-        if (making.has_byproducts()) {
-            std::vector<item> bps = making.create_byproducts(craft.charges);
-            for (auto& b : bps) {
-                if (b.made_of(phase_id::LIQUID)) {
-                    while (b.charges > 0) {
-                        liquid_dest_opt ldo;
-                        if (!liquid_handler::get_liquid_target(b, nullptr, PICKUP_RANGE, nullptr, nullptr, nullptr, ldo, &ctl)) { // NEW
-                            if (get_player_character().query_yn(_("%s may dump the extra %s on the ground.\n"
-                                "Are you sure you want to proceed?"), ch.name, b.display_name())) b.charges = 0;
-                        }
-                        else {
-                            if (ldo.dest_opt != LD_GROUND) {
-                                units::volume x = ldo.item_loc.get_item()->get_total_capacity();
-                                b.charges -= b.charges_per_volume(x);
-                                ctl.emplace_back(ldo.item_loc);
-                            }
-                            else b.charges = 0;
-                            craft_in_world->byproduct_container_list.emplace_back(ldo);
-                        }
-                    }
-                }
-            }
-        }
-    } // NEW
-
+    // NEWXX add call here
 
     if( !craft_in_world ) {
         ch.add_msg_if_player( _( "Wield and activate the %s to start working." ), craft.tname() );
@@ -957,6 +933,7 @@ static item_location place_craft_or_disassembly(
 
     return craft_in_world;
 }
+
 
 void Character::start_craft( craft_command &command, const cata::optional<tripoint> &loc )
 {
@@ -1479,9 +1456,12 @@ void Character::complete_craft( item &craft, const cata::optional<tripoint> &loc
         }
 
         if (newit.made_of(phase_id::LIQUID)) { // NEW
-            newit.liquid_container_list = craft.liquid_container_list;
-            if (this->is_avatar()) liquid_handler::handle_all_liquid(newit, PICKUP_RANGE);
-            else liquid_handler::handle_all_liquid(newit, PICKUP_RANGE, nullptr, this, &newit.liquid_container_list);
+            //newit.liquid_container_list = craft.liquid_container_list;
+            if (this->is_avatar()) {
+                liquid_handler::handle_all_liquid(newit, PICKUP_RANGE);
+            } else {
+                liquid_handler::handle_all_liquid(newit, PICKUP_RANGE, nullptr, this, &this->craftlog.front().liquid_dump_spots);
+            }
         } else if( !loc && !has_wield_conflicts( craft ) &&
                    can_wield( newit ).success() ) {
             wield_craft( *this, newit );
@@ -1505,9 +1485,12 @@ void Character::complete_craft( item &craft, const cata::optional<tripoint> &loc
             }
             bp.set_owner( get_faction()->id );
             if( bp.made_of( phase_id::LIQUID ) ) {
-                bp.byproduct_container_list = craft.byproduct_container_list;
-                if (this->is_avatar()) liquid_handler::handle_all_liquid(bp, PICKUP_RANGE);
-                else liquid_handler::handle_all_liquid(bp, PICKUP_RANGE, nullptr, this, &bp.byproduct_container_list);
+                //bp.byproduct_container_list = craft.byproduct_container_list;
+                if (this->is_avatar()) { // NEW
+                    liquid_handler::handle_all_liquid(bp, PICKUP_RANGE);
+                } else {
+                    liquid_handler::handle_all_liquid(bp, PICKUP_RANGE, nullptr, this, &this->craftlog.front().byproduct_dump_spots);
+                }
             } else if( !loc ) {
                 set_item_inventory( *this, bp );
             } else {

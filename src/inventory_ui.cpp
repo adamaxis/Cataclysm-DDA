@@ -2441,7 +2441,7 @@ void inventory_selector::draw_footer( const catacurses::window &w ) const
     }
 }
 
-inventory_selector::inventory_selector( Character &u, const inventory_selector_preset &preset, const std::vector<item_location> *avoid)
+inventory_selector::inventory_selector( Character &u, const inventory_selector_preset &preset, const std::list<item_location> *avoid)
     : u( u )
     , preset( preset )
     , avoid( avoid ) // NEW

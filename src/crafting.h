@@ -19,6 +19,8 @@ struct enum_traits<craft_flags> {
     static constexpr bool is_flag_enum = true;
 };
 
+
+
 // removes any (removable) ammo from the item and stores it in the
 // players inventory.
 void remove_ammo( item &dis_item, Character &p );

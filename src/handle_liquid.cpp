@@ -105,7 +105,7 @@ static void serialize_liquid_target( player_activity &act, const tripoint &pos )
 
 namespace liquid_handler
 {
-void handle_all_liquid(item liquid, const int radius, const item* const avoid, Character* pc, std::vector<liquid_dest_opt>* dest_opt)
+void handle_all_liquid(item liquid, const int radius, const item* const avoid, Character* pc, std::list<liquid_dest_opt>* dest_opt)
 {
     if (!pc) pc = &get_player_character();
     while( liquid.charges > 0 && can_handle_liquid( liquid, pc) ) {
@@ -175,7 +175,7 @@ bool get_liquid_target(item& liquid, const item* const source, const int radius,
     const vehicle* const source_veh,
     const monster* const source_mon,
     liquid_dest_opt& target,
-    const std::vector<item_location> *avoid,
+    const std::list<item_location> *avoid,
     Character* player_character) // NEW - not static
 {
     if( !liquid.made_of_from_type( phase_id::LIQUID ) ) {
@@ -343,6 +343,66 @@ bool get_liquid_target(item& liquid, const item* const source, const int radius,
     return true;
 }
 
+bool preselect_liquid_target_for_crafting(const Character &p, item &craft, crafting_list &cl) { // NEWXX
+    if (p.is_avatar()) {
+        return false;
+        // shouldn't be called
+    }
+    else {
+        const recipe &making = cl.craft; // NEWY
+        item i = cl.craft.create_result();
+        i.charges = cl.batch_size;
+        std::list<item_location> avoid;
+        if (i.made_of(phase_id::LIQUID)) {
+            while (i.charges > 0) {
+                liquid_dest_opt ldo;
+                if (!liquid_handler::get_liquid_target(i, nullptr, PICKUP_RANGE, nullptr, nullptr, nullptr, ldo, &avoid)) { // gpc required for ownership // NEW
+                    if (get_player_character().query_yn(_("%s may dump the extra %s on the ground.\n"
+                        "Are you sure you want to proceed?"), p.name, i.display_name())) i.charges = 0;
+                }
+                else {
+                    if (ldo.dest_opt != LD_GROUND) {
+                        // remove and readd liquid
+                        units::volume x = ldo.item_loc.get_item()->get_total_capacity();
+                        i.charges -= i.charges_per_volume(x);
+                        avoid.emplace_back(ldo.item_loc);
+                    }
+                    else i.charges = 0;
+                    cl.liquid_dump_spots.emplace_back(ldo);
+                    //craft_in_world->liquid_container_list.emplace_back(ldo);
+                }
+            }
+        }
+        else return false;
+        if (making.has_byproducts()) {
+            std::vector<item> bps = making.create_byproducts(craft.charges);
+            for (auto& b : bps) {
+                if (b.made_of(phase_id::LIQUID)) {
+                    while (b.charges > 0) {
+                        liquid_dest_opt ldo;
+                        if (!liquid_handler::get_liquid_target(b, nullptr, PICKUP_RANGE, nullptr, nullptr, nullptr, ldo, &avoid)) { // NEW
+                            if (get_player_character().query_yn(_("%s may dump the extra %s on the ground.\n"
+                                "Are you sure you want to proceed?"), p.name, b.display_name())) b.charges = 0;
+                        }
+                        else {
+                            if (ldo.dest_opt != LD_GROUND) {
+                                units::volume x = ldo.item_loc.get_item()->get_total_capacity();
+                                b.charges -= b.charges_per_volume(x);
+                                //avoid.emplace_back(ldo.item_loc);
+                                avoid.emplace_back(ldo.item_loc);
+                            }
+                            else b.charges = 0;
+                            cl.byproduct_dump_spots.emplace_back(ldo);
+                            //craft_in_world->byproduct_container_list.emplace_back(ldo);
+                        }
+                    }
+                }
+            }
+        }
+    } // NEW
+    return true;
+}
+
 bool perform_liquid_transfer( item &liquid, const tripoint *const source_pos,
                               const vehicle *const source_veh, const int part_num,
                               const monster *const /*source_mon*/, liquid_dest_opt &target,
@@ -475,7 +535,7 @@ bool handle_liquid( item &liquid, const item *const source, const int radius,
                     const tripoint *const source_pos,
                     const vehicle *const source_veh, const int part_num,
                     const monster *const source_mon,
-                    Character* pc, std::vector<liquid_dest_opt>* dest_opt)
+                    Character* pc, std::list<liquid_dest_opt>* dest_opt)
 {
     bool success = false;
     if( !can_handle_liquid( liquid, pc ) ) {

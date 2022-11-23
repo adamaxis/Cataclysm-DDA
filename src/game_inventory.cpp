@@ -132,7 +132,7 @@ static item_location inv_internal( Character &u, const inventory_selector_preset
                                    const std::string &none_message,
                                    const std::string &hint = std::string(),
                                    item_location container = item_location(),
-    const std::vector<item_location> *avoid = nullptr) // NEW
+    const std::list<item_location> *avoid = nullptr) // NEW
 {
     inventory_pick_selector inv_s(u, preset, avoid); // NEW
 
@@ -440,7 +440,7 @@ class liquid_inventory_selector_preset : public inventory_selector_preset
 {
     public:
         explicit liquid_inventory_selector_preset( const item &liquid,
-            const std::vector<item_location>* avoid) : liquid( liquid ), avoid( avoid ) {
+            const std::list<item_location>* avoid) : liquid( liquid ), avoid( avoid ) {
 
             append_cell( []( const item_location & loc ) {
                 if( loc.get_item() ) {
@@ -472,13 +472,13 @@ class liquid_inventory_selector_preset : public inventory_selector_preset
 
     private:
         const item &liquid;
-        const std::vector<item_location>* avoid;
+        const std::list<item_location>* avoid;
 };
 
 // NEW - wrapper
 item_location game_menus::inv::container_for(Character& you, const item& liquid, int radius,
     const item_location* const avoid) {
-    std::vector<item_location> av;
+    std::list<item_location> av;
     if (avoid) {
         av.push_back((const item_location)*avoid);
     }
@@ -487,7 +487,7 @@ item_location game_menus::inv::container_for(Character& you, const item& liquid,
 
 
 item_location game_menus::inv::container_for( Character &you, const item &liquid, int radius,
-        const std::vector<item_location> *avoid ) // NEW
+        const std::list<item_location> *avoid ) // NEW
 {
     return inv_internal( you, liquid_inventory_selector_preset( liquid, avoid), // NEW, originally avoid
                          string_format( _( "Container for %s | %s %s" ), liquid.display_name( liquid.charges ),
@@ -2017,8 +2017,7 @@ drop_locations game_menus::inv::multidrop( avatar &you )
 }
 
 drop_locations game_menus::inv::pickup( avatar &you,
-                                        const cata::optional<tripoint> &target, const std::vector<drop_location> &selection,
-                                        const std::vector<item_location> *avoid)
+                                        const cata::optional<tripoint> &target, const std::vector<drop_location> &selection)
 {
     const pickup_inventory_preset preset( you, /*skip_wield_check=*/true, /*ignore_liquidcont=*/true);
 

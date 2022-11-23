@@ -151,7 +151,7 @@ class inventory : public visitable
                              const Character *pl = nullptr, bool assign_invlet = true );
 
 
-        static std::vector<item_location> form_from_mapX(const tripoint& origin, int range, const Character* pl, // NEW
+        static std::list<item_location> form_from_mapX(const tripoint& origin, int range, const Character* pl, // NEW
             bool clear_path,
             const std::function<bool(const item_location*)>& filter = [](const item_location* it = nullptr) -> bool { return !it; }); // to bypass unused error error
 

@@ -230,3 +230,5 @@ weather.output
 .sass-cache
 .jekyll-metadata
 Gemfile.lock
+/Nehalem
+/Ace.template
