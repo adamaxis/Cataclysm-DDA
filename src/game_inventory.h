@@ -95,8 +95,7 @@ drop_locations multidrop( avatar &you );
  * @return A list of pairs of item_location, quantity.
  */
 drop_locations pickup( avatar &you, const cata::optional<tripoint> &target = cata::nullopt,
-                       const std::vector<drop_location> &selection = {},
-                       const std::vector<item_location> *avoid = nullptr);
+                       const std::vector<drop_location> &selection = {});
 
 drop_locations smoke_food( Character &you, units::volume total_capacity,
                            units::volume used_capacity );
@@ -121,7 +120,7 @@ item_location container_for( Character& you, const item& liquid, int radius = 0,
     const item_location* const avoid = nullptr); // NEW
 /** Choosing a container for liquid. */
 item_location container_for(Character& you, const item& liquid, int radius = 0,
-    const std::vector<item_location> *avoid = nullptr); // NEW
+    const std::list<item_location> *avoid = nullptr); // NEW
 /** Item disassembling menu. */
 item_location disassemble( Character &you );
 /** Gunmod installation menu. */
