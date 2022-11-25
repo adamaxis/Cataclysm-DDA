@@ -1302,7 +1302,7 @@ void npc::starting_weapon( const npc_class_id &type )
 
 
 bool npc::do_craft() {
-    this->craft(this->pos());
+    this->craft(this->pos(), {});
     return true;
 }
 
